@@ -1,9 +1,0 @@
-{
-  "version": "1",
-  "name": "dise-api",
-  "type": "collection",
-  "ignore": [
-    "node_modules",
-    ".git"
-  ]
-}
