@@ -1,10 +1,10 @@
 from pydantic_settings import BaseSettings,SettingsConfigDict
 from pydantic import ConfigDict
-from typing import List
-
+import os
+BASE_DIR = os.path.dirname(os.path.abspath(__file__))
 class Settings(BaseSettings):
   model_config = SettingsConfigDict(
-        env_file='.env',
+        env_file=os.path.join(BASE_DIR, '..', '..', '.env'),
         env_file_encoding='utf-8',
         case_sensitive=True,
     )
@@ -15,7 +15,7 @@ class Settings(BaseSettings):
 #   TOKEN CONFIG
 
   ALGORITHMS:str = "HS256"
-  SECRET_ACCESS_TOKEN:str ="abcdef" # change to yours
+  SECRET_ACCESS_TOKEN:str ="" # change to yours
   SECRET_REFRESH_TOKEN:str = "abcdefg"
   ACCESS_TOKEN_EXPIRE_MINUTES:int=15
   REFRESH_TOKEN_EXPIRE_DAYS:int=30
