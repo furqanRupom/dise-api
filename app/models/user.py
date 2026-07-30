@@ -1,4 +1,5 @@
 from app.db.database import Base
+from datetime import datetime
 from sqlalchemy import Column,Integer,String,Boolean,DateTime,func,Enum
 from sqlalchemy.orm import Mapped,mapped_column
 import enum
@@ -17,5 +18,11 @@ class User(Base):
   email:Mapped[str] = mapped_column(String,unique=True,index=True,nullable=False)
   role:Mapped[UserRole] = mapped_column(Enum(UserRole),default=UserRole.USER,nullable=False,index=True)
   is_active:Mapped[bool] = mapped_column(Boolean,default=False)
-  created_at:Mapped[DateTime] = mapped_column(DateTime(timezone=True),server_default=func.now())
-  updated_at:Mapped[DateTime] = mapped_column(DateTime(timezone=True),onupdate=func.now())
+  is_verified:Mapped[bool] = mapped_column(Boolean,default=False)
+  created_at:Mapped[datetime] = mapped_column(DateTime(timezone=True),server_default=func.now())
+  updated_at:Mapped[datetime] = mapped_column(
+    DateTime(timezone=True),
+    server_default=func.now(),
+    onupdate=func.now(),
+    nullable=False
+    )
