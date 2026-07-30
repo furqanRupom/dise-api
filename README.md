@@ -1,6 +1,4 @@
-Here's a clean, professional **README.md** for your **dise-api** project:
 
-```markdown
 # dise-api
 
 Modern FastAPI backend with user authentication.  
@@ -202,7 +200,6 @@ docker-compose up --build
 ## License
 
 MIT
-```
 
 ---
 
