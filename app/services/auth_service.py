@@ -1,7 +1,12 @@
-from fastapi import HTTPException, status
+import random
+import string
+
+from fastapi import BackgroundTasks, HTTPException, status
+from fastapi_mail import MessageSchema, MessageType
 from redis.asyncio import Redis
 from sqlalchemy.orm import Session
 
+from app.core.mail import fm
 from app.core.settings import (
     create_access_token,
     create_refresh_token,
@@ -86,3 +91,21 @@ class AuthService:
 
         await self.redis.delete(f"otp:{email}")
         return True
+
+    def generateOtp(self, length: int = 6) -> str:
+        return "".join(random.choices(string.digits, k=length))
+
+    async def send_otp_mail(self, email: str, background_tasks: BackgroundTasks):
+        otp = self.generateOtp()
+
+        # store in redis for 5min
+        await self.store_otp(email, otp, 300)
+
+        message = MessageSchema(
+            subject="Your Verification Code",
+            recipients=[email],
+            template_body={"otp": otp},
+            subtype=MessageType.html,
+        )
+        # sends in background so that API response it instantly
+        background_tasks.add_task(fm.send_message, message, template_name="otp.html")
