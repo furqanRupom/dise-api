@@ -1,0 +1,26 @@
+# Core
+fastapi[standard]>=0.140.0
+uvicorn[standard]>=0.34.0
+pydantic>=2.9.0
+pydantic-settings>=2.5.0
+
+# Database
+sqlalchemy>=2.0.36
+alembic>=1.14.0
+psycopg2-binary>=2.9.9          # for PostgreSQL (sync)
+# asyncpg>=0.30.0               # uncomment if you switch to async SQLAlchemy
+
+# Authentication
+python-jose[cryptography]>=3.3.0
+passlib[bcrypt]>=1.7.4
+bcrypt>=4.0.1,<5.0.0            # pin to avoid passlib compatibility issues
+python-multipart>=0.0.12        # required for form data (login)
+
+# Utilities
+python-dotenv>=1.0.1
+email-validator>=2.2.0          # if you validate emails
+
+# Development (optional – you can move these to requirements-dev.txt later)
+# pytest>=8.3.0
+# pytest-asyncio>=0.24.0
+# httpx>=0.28.0
