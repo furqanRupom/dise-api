@@ -1,122 +1,62 @@
 # dise-api
 
-**Car Rental API** built with FastAPI.
+A FastAPI backend for a car rental platform. Handles user authentication today; vehicle listings, bookings, and rental management are next.
 
-A modern backend service for managing car rentals, users, and bookings.  
-Currently includes user authentication. Vehicle management, booking system, and more features are planned.
+[![Python](https://img.shields.io/badge/python-3.12%2B-blue)]()
+[![FastAPI](https://img.shields.io/badge/framework-FastAPI-009688)]()
+[![License](https://img.shields.io/badge/license-MIT-green)]()
 
----
+## Status
 
-## Overview
-
-`dise-api` is a RESTful API designed for a car rental platform.  
-It allows users to register, log in, and (in future versions) browse available cars, make bookings, and manage rentals.
-
-### Current Focus
-- Secure user authentication (JWT)
-- Database migrations with Alembic
-- Clean and scalable project structure
-
-### Planned Features
-- Vehicle listing & management
-- Car availability & booking system
-- Rental history
-- Admin dashboard endpoints
-- Payment integration (future)
-
----
-
-## Features
-
-- [x] User registration
-- [x] User login (JWT)
-- [x] Password hashing (Argon2)
-- [x] Database migrations (Alembic)
-- [ ] Vehicle management (CRUD)
-- [ ] Car availability checking
-- [ ] Booking / Rental system
-- [ ] Role-based access (User / Admin)
-- [ ] Refresh tokens
-- [ ] User profile management
-- [ ] Password reset & email verification
-
----
+| Feature | Status |
+|---|---|
+| User registration & login (JWT) | ✅ Done |
+| Password hashing (Argon2) | ✅ Done |
+| Database migrations (Alembic) | ✅ Done |
+| Vehicle management | 🚧 Planned |
+| Booking / rental system | 🚧 Planned |
+| Role-based access | 🚧 Planned |
+| Refresh tokens | 🚧 Planned |
+| Password reset / email verification | 🚧 Planned |
 
 ## Tech Stack
 
-| Layer            | Technology              |
-|------------------|-------------------------|
-| Framework        | FastAPI                 |
-| Language         | Python 3.12+            |
-| ORM              | SQLAlchemy 2.x          |
-| Migrations       | Alembic                 |
-| Validation       | Pydantic v2             |
-| Auth             | JWT + pwdlib (Argon2)   |
-| Database         | PostgreSQL              |
-| ASGI Server      | Uvicorn                 |
+- **Framework:** FastAPI
+- **Language:** Python 3.12+
+- **Database:** PostgreSQL, via SQLAlchemy 2.x
+- **Migrations:** Alembic
+- **Validation:** Pydantic v2
+- **Auth:** JWT + Argon2 (pwdlib)
+- **Server:** Uvicorn
 
----
-
-## Project Structure
-
-```text
-dise-api/
-├── alembic/                  # Database migrations
-├── app/
-│   ├── api/                  # API routes
-│   │   └── auth.py
-│   ├── core/                 # Config & settings
-│   ├── db/                   # Database session
-│   ├── models/               # SQLAlchemy models
-│   ├── schemas/              # Pydantic schemas
-│   ├── services/             # Business logic
-│   ├── utils/                # Helpers & enums
-│   └── main.py               # Application entrypoint
-├── docker-compose.yml
-├── alembic.ini
-├── requirements.txt
-└── README.md
-```
-
----
-
-## Prerequisites
-
-- Python **3.12+**
-- PostgreSQL
-- Git
-
----
-
-## Setup & Installation
-
-### 1. Clone the repository
+## Quick Start
 
 ```bash
+# 1. Clone and enter the project
 git clone <your-repo-url>
 cd dise-api
-```
 
-### 2. Create and activate virtual environment
-
-```bash
+# 2. Create a virtual environment
 python3 -m venv .venv
+source .venv/bin/activate      # Windows: .venv\Scripts\activate
 
-# Linux / macOS
-source .venv/bin/activate
-
-# Windows
-.venv\Scripts\activate
-```
-
-### 3. Install dependencies
-
-```bash
+# 3. Install dependencies
 pip install --upgrade pip
 pip install -r requirements.txt
+
+# 4. Configure environment variables
+cp .env.example .env           # then edit .env with your values
+
+# 5. Set up the database and run migrations
+alembic upgrade head
+
+# 6. Start the dev server
+fastapi dev app/main.py
 ```
 
-### 4. Environment variables
+The API is now running at `http://127.0.0.1:8000`.
+
+## Configuration
 
 Create a `.env` file in the project root:
 
@@ -127,107 +67,97 @@ ALGORITHM=HS256
 ACCESS_TOKEN_EXPIRE_MINUTES=30
 ```
 
-> Generate a strong secret key:
-> ```bash
-> python -c "import secrets; print(secrets.token_hex(32))"
-> ```
+Generate a secure secret key:
 
----
+```bash
+python -c "import secrets; print(secrets.token_hex(32))"
+```
 
 ## Database Setup
 
-### 1. Create PostgreSQL user and database
-
-```bash
-sudo -u postgres psql
-```
+If you don't already have a database and user:
 
 ```sql
+-- run inside `sudo -u postgres psql`
 CREATE USER diseuser WITH PASSWORD 'yourpassword';
 CREATE DATABASE dise_api OWNER diseuser;
 GRANT ALL PRIVILEGES ON DATABASE dise_api TO diseuser;
-\q
 ```
 
-### 2. Run migrations
+Then apply migrations:
 
 ```bash
 alembic upgrade head
 ```
 
-### 3. Create new migration (after model changes)
+<details>
+<summary>Common Alembic commands</summary>
 
 ```bash
-alembic revision --autogenerate -m "description of changes"
-alembic upgrade head
+alembic current                              # current migration version
+alembic history                              # migration history
+alembic revision --autogenerate -m "message" # create a new migration
+alembic upgrade head                         # apply all pending migrations
+alembic downgrade -1                         # roll back one step
 ```
+</details>
 
-### Useful Alembic commands
-
-```bash
-alembic current          # Check current version
-alembic history          # Show migration history
-alembic downgrade -1     # Rollback one step
-```
-
----
-
-## Running the Application
-
-### Development
-
-```bash
-uvicorn app.main:app --reload --host 0.0.0.0 --port 8000
-```
-
-Or:
-
-```bash
-fastapi dev app/main.py
-```
-
-### Production
+## Running in Production
 
 ```bash
 uvicorn app.main:app --host 0.0.0.0 --port 8000 --workers 4
 ```
 
----
+## API Reference
 
-## API Documentation
+Interactive docs are available once the server is running:
 
-Once the server is running:
+- Swagger UI — `http://127.0.0.1:8000/docs`
+- ReDoc — `http://127.0.0.1:8000/redoc`
+- OpenAPI schema — `http://127.0.0.1:8000/openapi.json`
 
-| Resource       | URL                              |
-|----------------|----------------------------------|
-| Swagger UI     | http://127.0.0.1:8000/docs       |
-| ReDoc          | http://127.0.0.1:8000/redoc      |
-| OpenAPI JSON   | http://127.0.0.1:8000/openapi.json |
+### Endpoints
 
----
+| Method | Endpoint | Description |
+|---|---|---|
+| `POST` | `/auth/register` | Create a new user account |
+| `POST` | `/auth/login` | Authenticate and receive a JWT |
 
-## Available Endpoints (Current)
+## Project Structure
 
-| Method | Endpoint           | Description              |
-|--------|--------------------|--------------------------|
-| `POST` | `/auth/register`   | Create a new user        |
-| `POST` | `/auth/login`      | Login and get JWT token  |
-
----
+```
+dise-api/
+├── alembic/          # Database migrations
+├── app/
+│   ├── api/          # Route handlers (e.g. auth.py)
+│   ├── core/         # Config & settings
+│   ├── db/           # Database session setup
+│   ├── models/        # SQLAlchemy models
+│   ├── schemas/       # Pydantic request/response schemas
+│   ├── services/       # Business logic
+│   ├── utils/          # Shared helpers & enums
+│   └── main.py         # App entrypoint
+├── docker-compose.yml
+├── alembic.ini
+├── requirements.txt
+└── README.md
+```
 
 ## Roadmap
 
-- [ ] Vehicle management (add, update, delete cars)
-- [ ] Car availability & search filters
-- [ ] Booking / rental system
-- [ ] Role-based access control (Admin / User)
-- [ ] Refresh token support
-- [ ] User profile & rental history
-- [ ] Email verification & password reset
-- [ ] Rate limiting & better logging
-- [ ] Unit & integration tests
+- Vehicle management (add, update, delete cars)
+- Car availability & search filters
+- Booking / rental system
+- Role-based access control (admin / user)
+- Refresh token support
+- User profiles & rental history
+- Email verification & password reset
+- Rate limiting & structured logging
+- Unit & integration test suite
 
----
+## Contributing
+
+Issues and pull requests are welcome. If you're planning a larger change, open an issue first to discuss the approach.
 
 ## License
 
