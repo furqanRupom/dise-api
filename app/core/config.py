@@ -23,6 +23,11 @@ class Settings(BaseSettings):
 
 # DB
   DATABASE_URL:str = "postgresql://diseuser:disepassword@localhost:5432/disedb"
-
+# REDIS
+  REDIS_HOST: str = "localhost"
+  REDIS_PORT: int = 6379
+  REDIS_DB: int = 0
+  REDIS_PASSWORD: str | None = None
+  REDIS_URL: str | None = None   # optional, useful with Doc 
     
 settings = Settings()
