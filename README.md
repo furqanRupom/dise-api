@@ -1,7 +1,28 @@
 # dise-api
 
-Modern FastAPI backend with user authentication.  
-Currently supports user registration & login. More features (roles, refresh tokens, profile management, etc.) are planned.
+**Car Rental API** built with FastAPI.
+
+A modern backend service for managing car rentals, users, and bookings.  
+Currently includes user authentication. Vehicle management, booking system, and more features are planned.
+
+---
+
+## Overview
+
+`dise-api` is a RESTful API designed for a car rental platform.  
+It allows users to register, log in, and (in future versions) browse available cars, make bookings, and manage rentals.
+
+### Current Focus
+- Secure user authentication (JWT)
+- Database migrations with Alembic
+- Clean and scalable project structure
+
+### Planned Features
+- Vehicle listing & management
+- Car availability & booking system
+- Rental history
+- Admin dashboard endpoints
+- Payment integration (future)
 
 ---
 
@@ -11,10 +32,13 @@ Currently supports user registration & login. More features (roles, refresh toke
 - [x] User login (JWT)
 - [x] Password hashing (Argon2)
 - [x] Database migrations (Alembic)
+- [ ] Vehicle management (CRUD)
+- [ ] Car availability checking
+- [ ] Booking / Rental system
+- [ ] Role-based access (User / Admin)
 - [ ] Refresh tokens
-- [ ] Role-based access control
-- [ ] User profile endpoints
-- [ ] Password reset / email verification
+- [ ] User profile management
+- [ ] Password reset & email verification
 
 ---
 
@@ -128,11 +152,10 @@ GRANT ALL PRIVILEGES ON DATABASE dise_api TO diseuser;
 ### 2. Run migrations
 
 ```bash
-# Apply all existing migrations
 alembic upgrade head
 ```
 
-### 3. (Optional) Create a new migration after changing models
+### 3. Create new migration (after model changes)
 
 ```bash
 alembic revision --autogenerate -m "description of changes"
@@ -142,37 +165,28 @@ alembic upgrade head
 ### Useful Alembic commands
 
 ```bash
-# Check current migration version
-alembic current
-
-# Show migration history
-alembic history
-
-# Downgrade one step
-alembic downgrade -1
-
-# Reset database (drop all tables and re-apply)
-alembic downgrade base
-alembic upgrade head
+alembic current          # Check current version
+alembic history          # Show migration history
+alembic downgrade -1     # Rollback one step
 ```
 
 ---
 
 ## Running the Application
 
-### Development (recommended)
+### Development
 
 ```bash
 uvicorn app.main:app --reload --host 0.0.0.0 --port 8000
 ```
 
-Or using the FastAPI CLI:
+Or:
 
 ```bash
 fastapi dev app/main.py
 ```
 
-### Production style
+### Production
 
 ```bash
 uvicorn app.main:app --host 0.0.0.0 --port 8000 --workers 4
@@ -192,7 +206,7 @@ Once the server is running:
 
 ---
 
-## Available Auth Endpoints
+## Available Endpoints (Current)
 
 | Method | Endpoint           | Description              |
 |--------|--------------------|--------------------------|
@@ -201,31 +215,16 @@ Once the server is running:
 
 ---
 
-## Docker (optional)
-
-```bash
-docker-compose up --build
-```
-
----
-
-## Development Tips
-
-- Always create a new Alembic migration after changing models.
-- Use `--reload` only in development.
-- Never commit the real `.env` file.
-- Keep secrets in `.env` and load them with `pydantic-settings`.
-
----
-
 ## Roadmap
 
+- [ ] Vehicle management (add, update, delete cars)
+- [ ] Car availability & search filters
+- [ ] Booking / rental system
+- [ ] Role-based access control (Admin / User)
 - [ ] Refresh token support
-- [ ] Role-based permissions (admin / user)
-- [ ] User profile management
+- [ ] User profile & rental history
 - [ ] Email verification & password reset
-- [ ] Rate limiting
-- [ ] Better error handling & logging
+- [ ] Rate limiting & better logging
 - [ ] Unit & integration tests
 
 ---
