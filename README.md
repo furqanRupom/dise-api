@@ -1,4 +1,3 @@
-
 # dise-api
 
 Modern FastAPI backend with user authentication.  
@@ -10,7 +9,7 @@ Currently supports user registration & login. More features (roles, refresh toke
 
 - [x] User registration
 - [x] User login (JWT)
-- [x] Password hashing
+- [x] Password hashing (Argon2)
 - [x] Database migrations (Alembic)
 - [ ] Refresh tokens
 - [ ] Role-based access control
@@ -25,11 +24,11 @@ Currently supports user registration & login. More features (roles, refresh toke
 |------------------|-------------------------|
 | Framework        | FastAPI                 |
 | Language         | Python 3.12+            |
-| ORM              | SQLAlchemy              |
+| ORM              | SQLAlchemy 2.x          |
 | Migrations       | Alembic                 |
 | Validation       | Pydantic v2             |
-| Auth             | JWT + Passlib           |
-| Database         | PostgreSQL (recommended)|
+| Auth             | JWT + pwdlib (Argon2)   |
+| Database         | PostgreSQL              |
 | ASGI Server      | Uvicorn                 |
 
 ---
@@ -51,6 +50,7 @@ dise-api/
 │   └── main.py               # Application entrypoint
 ├── docker-compose.yml
 ├── alembic.ini
+├── requirements.txt
 └── README.md
 ```
 
@@ -59,7 +59,7 @@ dise-api/
 ## Prerequisites
 
 - Python **3.12+**
-- PostgreSQL (or SQLite for quick testing)
+- PostgreSQL
 - Git
 
 ---
@@ -76,7 +76,7 @@ cd dise-api
 ### 2. Create and activate virtual environment
 
 ```bash
-python -m venv .venv
+python3 -m venv .venv
 
 # Linux / macOS
 source .venv/bin/activate
@@ -88,13 +88,8 @@ source .venv/bin/activate
 ### 3. Install dependencies
 
 ```bash
+pip install --upgrade pip
 pip install -r requirements.txt
-```
-
-> If you don't have a `requirements.txt` yet, install the core packages:
-
-```bash
-pip install "fastapi[standard]" sqlalchemy alembic pydantic-settings python-jose[cryptography] passlib[bcrypt] psycopg2-binary
 ```
 
 ### 4. Environment variables
@@ -102,19 +97,62 @@ pip install "fastapi[standard]" sqlalchemy alembic pydantic-settings python-jose
 Create a `.env` file in the project root:
 
 ```env
-# .env
-DATABASE_URL=postgresql://user:password@localhost:5432/dise_api
+DATABASE_URL=postgresql://diseuser:yourpassword@localhost:5432/dise_api
 SECRET_KEY=your-super-secret-key-change-this-in-production
 ALGORITHM=HS256
 ACCESS_TOKEN_EXPIRE_MINUTES=30
 ```
 
-> **Important:** Never commit the real `.env` file.
+> Generate a strong secret key:
+> ```bash
+> python -c "import secrets; print(secrets.token_hex(32))"
+> ```
 
-### 5. Database setup
+---
+
+## Database Setup
+
+### 1. Create PostgreSQL user and database
 
 ```bash
-# Run migrations
+sudo -u postgres psql
+```
+
+```sql
+CREATE USER diseuser WITH PASSWORD 'yourpassword';
+CREATE DATABASE dise_api OWNER diseuser;
+GRANT ALL PRIVILEGES ON DATABASE dise_api TO diseuser;
+\q
+```
+
+### 2. Run migrations
+
+```bash
+# Apply all existing migrations
+alembic upgrade head
+```
+
+### 3. (Optional) Create a new migration after changing models
+
+```bash
+alembic revision --autogenerate -m "description of changes"
+alembic upgrade head
+```
+
+### Useful Alembic commands
+
+```bash
+# Check current migration version
+alembic current
+
+# Show migration history
+alembic history
+
+# Downgrade one step
+alembic downgrade -1
+
+# Reset database (drop all tables and re-apply)
+alembic downgrade base
 alembic upgrade head
 ```
 
@@ -144,13 +182,22 @@ uvicorn app.main:app --host 0.0.0.0 --port 8000 --workers 4
 
 ## API Documentation
 
-Once the server is running, open:
+Once the server is running:
 
-| Resource              | URL                              |
-|-----------------------|----------------------------------|
-| Swagger UI            | http://127.0.0.1:8000/docs       |
-| ReDoc                 | http://127.0.0.1:8000/redoc      |
-| OpenAPI JSON          | http://127.0.0.1:8000/openapi.json |
+| Resource       | URL                              |
+|----------------|----------------------------------|
+| Swagger UI     | http://127.0.0.1:8000/docs       |
+| ReDoc          | http://127.0.0.1:8000/redoc      |
+| OpenAPI JSON   | http://127.0.0.1:8000/openapi.json |
+
+---
+
+## Available Auth Endpoints
+
+| Method | Endpoint           | Description              |
+|--------|--------------------|--------------------------|
+| `POST` | `/auth/register`   | Create a new user        |
+| `POST` | `/auth/login`      | Login and get JWT token  |
 
 ---
 
@@ -162,26 +209,12 @@ docker-compose up --build
 
 ---
 
-## Available Auth Endpoints
-
-| Method | Endpoint           | Description              |
-|--------|--------------------|--------------------------|
-| `POST` | `/auth/register`   | Create a new user        |
-| `POST` | `/auth/login`      | Login and get JWT token  |
-
-> Exact paths may vary depending on how the router is mounted in `main.py`.
-
----
-
 ## Development Tips
 
-- Always create a new Alembic migration after changing models:
-  ```bash
-  alembic revision --autogenerate -m "description of changes"
-  alembic upgrade head
-  ```
+- Always create a new Alembic migration after changing models.
 - Use `--reload` only in development.
-- Keep secrets in `.env` and load them via `pydantic-settings`.
+- Never commit the real `.env` file.
+- Keep secrets in `.env` and load them with `pydantic-settings`.
 
 ---
 
@@ -200,13 +233,3 @@ docker-compose up --build
 ## License
 
 MIT
-
----
-
-### Quick tips for you
-
-1. Replace `<your-repo-url>` with your actual GitHub/GitLab URL.
-2. Adjust the endpoint paths (`/auth/register`, `/auth/login`) if your actual routes are different.
-3. Add a real `requirements.txt` if you don’t have one yet (I can generate one for you if you want).
-4. If you use Docker, make sure your `docker-compose.yml` matches the services you actually have.
-
