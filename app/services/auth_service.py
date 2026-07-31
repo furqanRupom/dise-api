@@ -1,13 +1,7 @@
-import random
-import string
-
 from fastapi import BackgroundTasks, HTTPException, status
-from fastapi_mail import MessageSchema, MessageType
-from pydantic import NameEmail
 from redis.asyncio import Redis
 from sqlalchemy.orm import Session
 
-from app.core.mail import fm
 from app.core.settings import (
     create_access_token,
     create_refresh_token,
@@ -16,6 +10,7 @@ from app.core.settings import (
 )
 from app.models.user import User
 from app.schemas.auth import Login, Register, RegisterResponse, TokenData, TokenFair
+from app.schemas.response import SendRespose
 from app.services.email_service import EmailService
 from app.services.otp_service import OTPService
 
@@ -35,7 +30,9 @@ class AuthService:
             )
         return user
 
-    def register(self, register: Register) -> RegisterResponse:
+    async def register(
+        self, register: Register, background_tasks: BackgroundTasks
+    ) -> SendRespose:
         is_exit = self.db.query(User).filter(User.email == register.email).first()
         if is_exit:
             raise HTTPException(
@@ -55,13 +52,19 @@ class AuthService:
             self.db.rollback()
             raise
 
-        return RegisterResponse(
-            id=new_user.id,
-            name=new_user.name,
-            email=new_user.email,
+        otp = self.otp_service.generate_otp()
+        await self.otp_service.store_otp(register.email, otp)
+        await EmailService.send_otp_email(register.email, otp, background_tasks)
+
+        return SendRespose(
+            success=True,
+            message="User Registered Successfully.check your mail",
+            data=RegisterResponse(
+                id=new_user.id, name=new_user.name, email=new_user.email
+            ),
         )
 
-    def login(self, data: Login) -> TokenFair:
+    def login(self, data: Login) -> SendRespose:
         user = self.findById(data.email)
         verify_pass = verify_password(data.password, user.password)
         if not verify_pass:
@@ -80,7 +83,12 @@ class AuthService:
 
         access_token = create_access_token(token_data)
         refresh_token = create_refresh_token(token_data)
-        return TokenFair(access_token=access_token, refresh_token=refresh_token)
+
+        return SendRespose(
+            success=True,
+            message="User Logged in Successfully",
+            data=TokenFair(access_token=access_token, refresh_token=refresh_token),
+        )
 
     async def verification_otp(self, email: str, background_tasks: BackgroundTasks):
         user = self.db.query(User).filter(User.email == email).first()
@@ -93,7 +101,10 @@ class AuthService:
         otp = self.otp_service.generate_otp()
         await self.otp_service.store_otp(email, otp)
         await EmailService.send_otp_email(email, otp, background_tasks)
-        return {"message": "Verification OTP sent successfully"}
+        return SendRespose(
+            success=True,
+            message="Verification OTP sent successfully",
+        )
 
     async def verify_email(self, email: str, otp: str):
         await self.otp_service.verify_otp(email, otp)
@@ -105,5 +116,7 @@ class AuthService:
 
         user.is_verified = True
         self.db.commit()
-
-        return {"message": "user verified successfully"}
+        return SendRespose(
+            success=True,
+            message="user verified successfully",
+        )

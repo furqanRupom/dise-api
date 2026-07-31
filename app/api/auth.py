@@ -5,7 +5,8 @@ from sqlalchemy.orm import Session
 
 from app.db.database import get_db
 from app.db.redis import get_redis
-from app.schemas.auth import Login, OTPVerify, Register, RegisterResponse, TokenFair
+from app.schemas.auth import Login, OTPVerify, Register
+from app.schemas.response import SendRespose
 from app.services.auth_service import AuthService
 
 router = APIRouter(prefix="/auth", tags=["auth"])
@@ -19,16 +20,18 @@ def get_auth_service(
 
 @router.post("/register")
 async def register_user(
-    register: Register, service: AuthService = Depends(get_auth_service)
-) -> RegisterResponse:
-    registered_user = service.register(register)
+    register: Register,
+    background_tasks: BackgroundTasks,
+    service: AuthService = Depends(get_auth_service),
+):
+    registered_user = service.register(register, background_tasks)
     return registered_user
 
 
 @router.post("/login")
 async def login_user(
     login: Login, service: AuthService = Depends(get_auth_service)
-) -> TokenFair:
+) -> SendRespose:
     logged_in_user = service.login(login)
     return logged_in_user
 
