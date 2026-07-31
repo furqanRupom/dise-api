@@ -16,12 +16,15 @@ from app.core.settings import (
 )
 from app.models.user import User
 from app.schemas.auth import Login, Register, RegisterResponse, TokenData, TokenFair
+from app.services.email_service import EmailService
+from app.services.otp_service import OTPService
 
 
 class AuthService:
     def __init__(self, db: Session, redis: Redis):
         self.db = db
         self.redis = redis
+        self.otp_service = OTPService(redis)
 
     def findById(self, email: str):
         user = self.db.query(User).filter_by(email=email).first()
@@ -67,46 +70,40 @@ class AuthService:
                 detail="Password didnot matched!",
             )
 
+        if not user.is_verified:
+            raise HTTPException(
+                status_code=status.HTTP_403_FORBIDDEN,
+                detail="Please verify your email first!",
+            )
+
         token_data = TokenData(id=user.id, role=user.role)
 
         access_token = create_access_token(token_data)
         refresh_token = create_refresh_token(token_data)
         return TokenFair(access_token=access_token, refresh_token=refresh_token)
 
-    async def store_otp(self, email: str, otp: str, expire: int = 300):
-        await self.redis.setex(f"otp:{email}", expire, otp)
-
-    async def verify_otp(self, email: str, otp: str) -> bool:
-        stored_otp = await self.redis.get(f"otp:{email}")
-
-        if not stored_otp:
+    async def verification_otp(self, email: str, background_tasks: BackgroundTasks):
+        user = self.db.query(User).filter(User.email == email).first()
+        if not user:
             raise HTTPException(
-                status_code=status.HTTP_400_BAD_REQUEST,
-                detail="OTP Expired or not found",
+                status_code=status.HTTP_404_NOT_FOUND, detail="User not found"
             )
 
-        if stored_otp != otp:
+        await self.otp_service.check_rate_limit(email)
+        otp = self.otp_service.generate_otp()
+        await self.otp_service.store_otp(email, otp)
+        await EmailService.send_otp_email(email, otp, background_tasks)
+        return {"message": "Verification OTP sent successfully"}
+
+    async def verify_email(self, email: str, otp: str):
+        await self.otp_service.verify_otp(email, otp)
+        user = self.db.query(User).filter(User.email == email).first()
+        if not user:
             raise HTTPException(
-                status_code=status.HTTP_400_BAD_REQUEST, detail="Invalid OTP"
+                status_code=status.HTTP_404_NOT_FOUND, detail="User not found"
             )
 
-        await self.redis.delete(f"otp:{email}")
-        return True
+        user.is_verified = True
+        self.db.commit()
 
-    def generateOtp(self, length: int = 6) -> str:
-        return "".join(random.choices(string.digits, k=length))
-
-    async def send_otp_mail(self, email: str, background_tasks: BackgroundTasks):
-        otp = self.generateOtp()
-
-        # store in redis for 5min
-        await self.store_otp(email, otp, 300)
-
-        message = MessageSchema(
-            subject="Your Verification Code",
-            recipients=[NameEmail(name=email, email=email)],
-            template_body={"otp": otp},
-            subtype=MessageType.html,
-        )
-        # sends in background so that API response it instantly
-        background_tasks.add_task(fm.send_message, message, template_name="otp.html")
+        return {"message": "user verified successfully"}
