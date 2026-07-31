@@ -3,6 +3,7 @@ import string
 
 from fastapi import BackgroundTasks, HTTPException, status
 from fastapi_mail import MessageSchema, MessageType
+from pydantic import NameEmail
 from redis.asyncio import Redis
 from sqlalchemy.orm import Session
 
@@ -103,7 +104,7 @@ class AuthService:
 
         message = MessageSchema(
             subject="Your Verification Code",
-            recipients=[email],
+            recipients=[NameEmail(name=email, email=email)],
             template_body={"otp": otp},
             subtype=MessageType.html,
         )

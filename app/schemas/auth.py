@@ -1,25 +1,34 @@
-from pydantic import BaseModel,EmailStr
+from pydantic import BaseModel, EmailStr
+
 
 class UserBase(BaseModel):
-    name:str
-    email:EmailStr
+    name: str
+    email: EmailStr
 
 
 class Register(UserBase):
-    password:str
+    password: str
+
 
 class RegisterResponse(UserBase):
-    id:int
+    id: int
 
 
 class Login(BaseModel):
-    email:EmailStr
-    password:str
+    email: EmailStr
+    password: str
+
 
 class TokenData(BaseModel):
-    id:int
-    role:str
-    
+    id: int
+    role: str
+
+
 class TokenFair(BaseModel):
-    access_token:str
-    refresh_token:str
+    access_token: str
+    refresh_token: str
+
+
+class OTPVerify(BaseModel):
+    email: EmailStr
+    otp: str
