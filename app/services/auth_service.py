@@ -4,7 +4,7 @@ from redis.asyncio import Redis
 from sqlalchemy.orm import Session
 from starlette.status import HTTP_401_UNAUTHORIZED
 
-from app.core.config import Settings, settings
+from app.core.config import settings
 from app.core.settings import (
     create_access_token,
     create_refresh_token,
@@ -153,8 +153,12 @@ class AuthService:
             )
 
         payload = jwt.decode(
-            refresh_token, Settings.SECRET_REFRESH_TOKEN, algorithms=Settings.ALGORITHMS
+            refresh_token,
+            settings.SECRET_REFRESH_TOKEN,
+            algorithms=[settings.ALGORITHMS],
         )
+
+        # GET THE EXISTING SESSION FROM REDIS
 
         session = await self._get_refresh_token(payload["jti"])
 
@@ -163,6 +167,8 @@ class AuthService:
                 status_code=HTTP_401_UNAUTHORIZED,
                 detail="Invalid or expired refresh token",
             )
+
+        # DELETE THE EXISTING SESSION
 
         await self._delete_refresh_token(payload["jti"])
 
@@ -173,10 +179,10 @@ class AuthService:
 
         new_payload = jwt.decode(
             new_refresh_token,
-            Settings.SECRET_REFRESH_TOKEN,
-            algorithms=[Settings.ALGORITHMS],
+            settings.SECRET_REFRESH_TOKEN,
+            algorithms=[settings.ALGORITHMS],
         )
-
+        # STORE NEW SESSION FOR REFRESH TOKEN
         await self._store_refresh_token(new_payload["jti"], new_payload["id"])
 
         response.set_cookie(

@@ -1,4 +1,5 @@
 # create jwttoken and hash password utils function
+import uuid
 from datetime import datetime, timedelta, timezone
 
 import jwt
@@ -44,6 +45,7 @@ def create_refresh_token(
         expires_delta or timedelta(days=settings.REFRESH_TOKEN_EXPIRE_DAYS)
     )
     to_encode["exp"] = expire
+    to_encode["jti"] = str(uuid.uuid4())
 
     token = jwt.encode(
         to_encode, settings.SECRET_REFRESH_TOKEN, algorithm=settings.ALGORITHMS
