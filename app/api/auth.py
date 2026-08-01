@@ -24,7 +24,7 @@ async def register_user(
     background_tasks: BackgroundTasks,
     service: AuthService = Depends(get_auth_service),
 ):
-    registered_user = service.register(register, background_tasks)
+    registered_user = await service.register(register, background_tasks)
     return registered_user
 
 
@@ -42,7 +42,7 @@ async def send_otp(
     background_tasks: BackgroundTasks,
     service: AuthService = Depends(get_auth_service),
 ):
-    return service.verification_otp(email, background_tasks)
+    return await service.verification_otp(email, background_tasks)
 
 
 @router.post("/verify-email")
@@ -50,4 +50,4 @@ async def verify_otp(
     data: OTPVerify,
     service: AuthService = Depends(get_auth_service),
 ):
-    return service.verify_email(data.email, data.otp)
+    return await service.verify_email(data.email, data.otp)
