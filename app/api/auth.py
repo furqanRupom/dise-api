@@ -1,8 +1,9 @@
-from fastapi import APIRouter, BackgroundTasks, Depends
+from fastapi import APIRouter, BackgroundTasks, Depends, Response
 from pydantic import EmailStr
 from redis.asyncio import Redis
 from sqlalchemy.orm import Session
 
+from app.core.config import settings
 from app.db.database import get_db
 from app.db.redis import get_redis
 from app.schemas.auth import Login, OTPVerify, Register
@@ -30,10 +31,30 @@ async def register_user(
 
 @router.post("/login")
 async def login_user(
-    login: Login, service: AuthService = Depends(get_auth_service)
+    response: Response, login: Login, service: AuthService = Depends(get_auth_service)
 ) -> SendRespose:
-    logged_in_user = service.login(login)
-    return logged_in_user
+
+    result = service.login(login)
+
+    response.set_cookie(
+        key="access_token",
+        value=result.data.access_token,
+        httponly=True,
+        max_age=settings.ACCESS_TOKEN_EXPIRE_SECONDS,
+        samesite="lax",
+        secure=True,
+    )
+
+    response.set_cookie(
+        key="refresh_token",
+        value=result.data.refresh_token,
+        httponly=True,
+        max_age=settings.REFRESH_TOKEN_EXPIRE_SECONDS,
+        samesite="lax",
+        secure=True,
+    )
+
+    return result
 
 
 @router.post("/send-otp")
@@ -51,3 +72,10 @@ async def verify_otp(
     service: AuthService = Depends(get_auth_service),
 ):
     return await service.verify_email(data.email, data.otp)
+
+
+@router.post("/logout")
+async def logout(response: Response):
+    response.delete_cookie(key="access_token")
+    response.delete_cookie(key="refresh_token")
+    return SendRespose(success=True, message="User logout successfully", data=None)

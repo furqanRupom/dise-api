@@ -102,8 +102,7 @@ class AuthService:
         await self.otp_service.store_otp(email, otp)
         await EmailService.send_otp_email(email, otp, background_tasks)
         return SendRespose(
-            success=True,
-            message="Verification OTP sent successfully",
+            success=True, message="Verification OTP sent successfully", data=None
         )
 
     async def verify_email(self, email: str, otp: str):
@@ -117,6 +116,5 @@ class AuthService:
         user.is_verified = True
         self.db.commit()
         return SendRespose(
-            success=True,
-            message="user verified successfully",
+            success=True, message="user verified successfully", data=None
         )

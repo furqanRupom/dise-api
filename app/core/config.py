@@ -22,6 +22,8 @@ class Settings(BaseSettings):
     SECRET_REFRESH_TOKEN: str = "abcdefg"
     ACCESS_TOKEN_EXPIRE_MINUTES: int = 15
     REFRESH_TOKEN_EXPIRE_DAYS: int = 30
+    ACCESS_TOKEN_EXPIRE_SECONDS: int = 900
+    REFRESH_TOKEN_EXPIRE_SECONDS: int = 64800
 
     # DB
     DATABASE_URL: str = "postgresql://diseuser:disepassword@localhost:5432/disedb"
