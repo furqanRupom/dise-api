@@ -1,7 +1,10 @@
-from fastapi import BackgroundTasks, HTTPException, status
+import jwt
+from fastapi import BackgroundTasks, HTTPException, Response, status
 from redis.asyncio import Redis
 from sqlalchemy.orm import Session
+from starlette.status import HTTP_401_UNAUTHORIZED
 
+from app.core.config import Settings, settings
 from app.core.settings import (
     create_access_token,
     create_refresh_token,
@@ -20,6 +23,21 @@ class AuthService:
         self.db = db
         self.redis = redis
         self.otp_service = OTPService(redis)
+
+    """ STORE REFRESH TOKEN VIA REDIS HERE FOR NOW """
+
+    async def _store_refresh_token(self, jti: str, user_id: int | str):
+        await self.redis.set(
+            f"refresh:{jti}",
+            str(user_id),
+            ex=settings.REFRESH_TOKEN_EXPIRE_SECONDS,
+        )
+
+    async def _get_refresh_token(self, jti: str) -> bytes | str | None:
+        return await self.redis.get(f"refresh:{jti}")
+
+    async def _delete_refresh_token(self, jti: str):
+        await self.redis.delete(f"refresh:{jti}")
 
     def findById(self, email: str):
         user = self.db.query(User).filter_by(email=email).first()
@@ -64,7 +82,7 @@ class AuthService:
             ),
         )
 
-    def login(self, data: Login) -> SendRespose:
+    async def login(self, data: Login) -> SendRespose:
         user = self.findById(data.email)
         verify_pass = verify_password(data.password, user.password)
         if not verify_pass:
@@ -84,6 +102,15 @@ class AuthService:
         access_token = create_access_token(token_data)
         refresh_token = create_refresh_token(token_data)
 
+        payload = jwt.decode(
+            refresh_token,
+            settings.SECRET_REFRESH_TOKEN,
+            algorithms=[settings.ALGORITHMS],
+        )
+        jti = payload["jti"]
+
+        # STORING REFRESH TOKEN IN REDIS
+        await self._store_refresh_token(jti, user.id)
         return SendRespose(
             success=True,
             message="User Logged in Successfully",
@@ -117,4 +144,58 @@ class AuthService:
         self.db.commit()
         return SendRespose(
             success=True, message="user verified successfully", data=None
+        )
+
+    async def refresh_session(self, refresh_token: str | None, response: Response):
+        if not refresh_token:
+            raise HTTPException(
+                status_code=HTTP_401_UNAUTHORIZED, detail="Refresh Token is missing!"
+            )
+
+        payload = jwt.decode(
+            refresh_token, Settings.SECRET_REFRESH_TOKEN, algorithms=Settings.ALGORITHMS
+        )
+
+        session = await self._get_refresh_token(payload["jti"])
+
+        if not session:
+            raise HTTPException(
+                status_code=HTTP_401_UNAUTHORIZED,
+                detail="Invalid or expired refresh token",
+            )
+
+        await self._delete_refresh_token(payload["jti"])
+
+        token_data = TokenData(id=payload["id"], role=payload["role"])
+
+        new_access_token = create_access_token(token_data)
+        new_refresh_token = create_refresh_token(token_data)
+
+        new_payload = jwt.decode(
+            new_refresh_token,
+            Settings.SECRET_REFRESH_TOKEN,
+            algorithms=[Settings.ALGORITHMS],
+        )
+
+        await self._store_refresh_token(new_payload["jti"], new_payload["id"])
+
+        response.set_cookie(
+            key="access_token",
+            value=new_access_token,
+            httponly=True,
+            max_age=settings.ACCESS_TOKEN_EXPIRE_SECONDS,
+            samesite="lax",
+            secure=True,
+        )
+        response.set_cookie(
+            key="refresh_token",
+            value=new_refresh_token,
+            httponly=True,
+            max_age=settings.REFRESH_TOKEN_EXPIRE_SECONDS,
+            samesite="lax",
+            secure=True,
+        )
+
+        return SendRespose(
+            success=True, message="Tokens refreshed successfully", data=None
         )

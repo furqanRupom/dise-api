@@ -1,4 +1,6 @@
-from fastapi import APIRouter, BackgroundTasks, Depends, Response
+from typing import Annotated
+
+from fastapi import APIRouter, BackgroundTasks, Cookie, Depends, Response
 from pydantic import EmailStr
 from redis.asyncio import Redis
 from sqlalchemy.orm import Session
@@ -34,7 +36,7 @@ async def login_user(
     response: Response, login: Login, service: AuthService = Depends(get_auth_service)
 ) -> SendRespose:
 
-    result = service.login(login)
+    result = await service.login(login)
 
     response.set_cookie(
         key="access_token",
@@ -72,6 +74,15 @@ async def verify_otp(
     service: AuthService = Depends(get_auth_service),
 ):
     return await service.verify_email(data.email, data.otp)
+
+
+@router.post("/refresh-token")
+async def refresh_token(
+    response: Response,
+    refresh_token: Annotated[str | None, Cookie()] = None,
+    service: AuthService = Depends(get_auth_service),
+):
+    return await service.refresh_session(refresh_token, response)
 
 
 @router.post("/logout")
