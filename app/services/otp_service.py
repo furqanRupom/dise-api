@@ -1,6 +1,3 @@
-import random
-import string
-
 from fastapi import HTTPException, status
 from redis.asyncio import Redis
 
@@ -8,9 +5,6 @@ from redis.asyncio import Redis
 class OTPService:
     def __init__(self, redis: Redis):
         self.redis = redis
-
-    def generate_otp(self, length: int = 6) -> str:
-        return "".join(random.choices(string.digits, k=length))
 
     async def store_otp(self, email: str, otp: str, expire: int = 300):
         await self.redis.setex(f"otp:{email}", expire, otp)

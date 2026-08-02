@@ -16,6 +16,7 @@ from app.schemas.auth import Login, Register, RegisterResponse, TokenData, Token
 from app.schemas.response import SendRespose
 from app.services.email_service import EmailService
 from app.services.otp_service import OTPService
+from app.utils.auth import generate_otp
 
 
 class AuthService:
@@ -70,7 +71,7 @@ class AuthService:
             self.db.rollback()
             raise
 
-        otp = self.otp_service.generate_otp()
+        otp = generate_otp()
         await self.otp_service.store_otp(register.email, otp)
         await EmailService.send_otp_email(register.email, otp, background_tasks)
 
@@ -125,7 +126,7 @@ class AuthService:
             )
 
         await self.otp_service.check_rate_limit(email)
-        otp = self.otp_service.generate_otp()
+        otp = generate_otp()
         await self.otp_service.store_otp(email, otp)
         await EmailService.send_otp_email(email, otp, background_tasks)
         return SendRespose(
