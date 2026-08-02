@@ -1,10 +1,25 @@
 from fastapi import HTTPException, status
 from redis.asyncio import Redis
 
+from app.core.config import settings
 
-class OTPService:
+
+class RedisService:
     def __init__(self, redis: Redis):
         self.redis = redis
+
+    async def store_refresh_token(self, jti: str, user_id: int | str):
+        await self.redis.set(
+            f"refresh:{jti}",
+            str(user_id),
+            ex=settings.REFRESH_TOKEN_EXPIRE_SECONDS,
+        )
+
+    async def get_refresh_token(self, jti: str) -> bytes | str | None:
+        return await self.redis.get(f"refresh:{jti}")
+
+    async def delete_refresh_token(self, jti: str):
+        await self.redis.delete(f"refresh:{jti}")
 
     async def store_otp(self, email: str, otp: str, expire: int = 300):
         await self.redis.setex(f"otp:{email}", expire, otp)

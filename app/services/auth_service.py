@@ -15,7 +15,7 @@ from app.models.user import User
 from app.schemas.auth import Login, Register, RegisterResponse, TokenData, TokenFair
 from app.schemas.response import SendRespose
 from app.services.email_service import EmailService
-from app.services.otp_service import OTPService
+from app.services.redis_service import RedisService
 from app.utils.auth import generate_otp
 
 
@@ -23,22 +23,9 @@ class AuthService:
     def __init__(self, db: Session, redis: Redis):
         self.db = db
         self.redis = redis
-        self.otp_service = OTPService(redis)
+        self.redis_service = RedisService(redis)
 
     """ STORE REFRESH TOKEN VIA REDIS HERE FOR NOW """
-
-    async def _store_refresh_token(self, jti: str, user_id: int | str):
-        await self.redis.set(
-            f"refresh:{jti}",
-            str(user_id),
-            ex=settings.REFRESH_TOKEN_EXPIRE_SECONDS,
-        )
-
-    async def _get_refresh_token(self, jti: str) -> bytes | str | None:
-        return await self.redis.get(f"refresh:{jti}")
-
-    async def _delete_refresh_token(self, jti: str):
-        await self.redis.delete(f"refresh:{jti}")
 
     def findById(self, email: str):
         user = self.db.query(User).filter_by(email=email).first()
@@ -72,7 +59,7 @@ class AuthService:
             raise
 
         otp = generate_otp()
-        await self.otp_service.store_otp(register.email, otp)
+        await self.redis_service.store_otp(register.email, otp)
         await EmailService.send_otp_email(register.email, otp, background_tasks)
 
         return SendRespose(
@@ -89,7 +76,7 @@ class AuthService:
         if not verify_pass:
             raise HTTPException(
                 status_code=status.HTTP_400_BAD_REQUEST,
-                detail="Password didnot matched!",
+                detail="Password did not matched!",
             )
 
         if not user.is_verified:
@@ -111,7 +98,7 @@ class AuthService:
         jti = payload["jti"]
 
         # STORING REFRESH TOKEN IN REDIS
-        await self._store_refresh_token(jti, user.id)
+        await self.redis_service.store_refresh_token(jti, user.id)
         return SendRespose(
             success=True,
             message="User Logged in Successfully",
@@ -125,16 +112,16 @@ class AuthService:
                 status_code=status.HTTP_404_NOT_FOUND, detail="User not found"
             )
 
-        await self.otp_service.check_rate_limit(email)
+        await self.redis_service.check_rate_limit(email)
         otp = generate_otp()
-        await self.otp_service.store_otp(email, otp)
+        await self.redis_service.store_otp(email, otp)
         await EmailService.send_otp_email(email, otp, background_tasks)
         return SendRespose(
             success=True, message="Verification OTP sent successfully", data=None
         )
 
     async def verify_email(self, email: str, otp: str):
-        await self.otp_service.verify_otp(email, otp)
+        await self.redis_service.verify_otp(email, otp)
         user = self.db.query(User).filter(User.email == email).first()
         if not user:
             raise HTTPException(
@@ -161,7 +148,7 @@ class AuthService:
 
         # GET THE EXISTING SESSION FROM REDIS
 
-        session = await self._get_refresh_token(payload["jti"])
+        session = await self.redis_service.get_refresh_token(payload["jti"])
 
         if not session:
             raise HTTPException(
@@ -171,7 +158,7 @@ class AuthService:
 
         # DELETE THE EXISTING SESSION
 
-        await self._delete_refresh_token(payload["jti"])
+        await self.redis_service.delete_refresh_token(payload["jti"])
 
         token_data = TokenData(id=payload["id"], role=payload["role"])
 
@@ -184,7 +171,9 @@ class AuthService:
             algorithms=[settings.ALGORITHMS],
         )
         # STORE NEW SESSION FOR REFRESH TOKEN
-        await self._store_refresh_token(new_payload["jti"], new_payload["id"])
+        await self.redis_service.store_refresh_token(
+            new_payload["jti"], new_payload["id"]
+        )
 
         response.set_cookie(
             key="access_token",
