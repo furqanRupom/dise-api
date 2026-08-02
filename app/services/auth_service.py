@@ -12,7 +12,14 @@ from app.core.settings import (
     verify_password,
 )
 from app.models.user import User
-from app.schemas.auth import Login, Register, RegisterResponse, TokenData, TokenFair
+from app.schemas.auth import (
+    Login,
+    Register,
+    RegisterResponse,
+    ResetPassword,
+    TokenData,
+    TokenFair,
+)
 from app.schemas.response import SendRespose
 from app.services.email_service import EmailService
 from app.services.redis_service import RedisService
@@ -194,4 +201,33 @@ class AuthService:
 
         return SendRespose(
             success=True, message="Tokens refreshed successfully", data=None
+        )
+
+    async def forgot_password(self, email: str, background_tasks: BackgroundTasks):
+        user = self.db.query(User).filter(User.email == email).first()
+        if not user:
+            raise HTTPException(status_code=404, detail="User not found")
+
+        otp = generate_otp()
+        await self.redis_service.store_otp(email, otp)
+
+        await EmailService.send_forgot_password_mail(email, otp, background_tasks)
+
+        return SendRespose(
+            success=True, message="Check your email for the OTP", data=None
+        )
+
+    async def reset_password(self, data: ResetPassword):
+        user = self.db.query(User).filter(User.email == data.email).first()
+        if not user:
+            raise HTTPException(status_code=404, detail="User not found")
+
+        if not verify_password(data.current_password, user.password):
+            raise HTTPException(status_code=400, detail="Invalid current password")
+
+        user.password = hash_password(data.new_password)
+        self.db.commit()
+
+        return SendRespose(
+            success=True, message="Password reset successfully", data=None
         )

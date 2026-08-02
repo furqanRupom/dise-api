@@ -8,7 +8,7 @@ from sqlalchemy.orm import Session
 from app.core.config import settings
 from app.db.database import get_db
 from app.db.redis import get_redis
-from app.schemas.auth import Login, OTPVerify, Register
+from app.schemas.auth import Login, OTPVerify, Register, ResetPassword
 from app.schemas.response import SendRespose
 from app.services.auth_service import AuthService
 
@@ -83,6 +83,23 @@ async def refresh_token(
     service: AuthService = Depends(get_auth_service),
 ):
     return await service.refresh_session(refresh_token, response)
+
+
+@router.post("/forgot-password")
+async def forgot_password(
+    email: EmailStr,
+    background_tasks: BackgroundTasks,
+    service: AuthService = Depends(get_auth_service),
+):
+    return await service.forgot_password(email, background_tasks)
+
+
+@router.post("/reset-password")
+async def reset_password(
+    data: ResetPassword,
+    service: AuthService = Depends(get_auth_service),
+):
+    return await service.reset_password(data)
 
 
 @router.post("/logout")

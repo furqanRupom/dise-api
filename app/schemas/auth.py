@@ -32,3 +32,9 @@ class TokenFair(BaseModel):
 class OTPVerify(BaseModel):
     email: EmailStr
     otp: str
+
+
+class ResetPassword(BaseModel):
+    email: EmailStr
+    current_password: str
+    new_password: str

@@ -8,6 +8,8 @@ class RedisService:
     def __init__(self, redis: Redis):
         self.redis = redis
 
+    """ FOR REFRESH TOKENS."""
+
     async def store_refresh_token(self, jti: str, user_id: int | str):
         await self.redis.set(
             f"refresh:{jti}",
@@ -20,6 +22,8 @@ class RedisService:
 
     async def delete_refresh_token(self, jti: str):
         await self.redis.delete(f"refresh:{jti}")
+
+    """ FOR OTP (One-Time Password)."""
 
     async def store_otp(self, email: str, otp: str, expire: int = 300):
         await self.redis.setex(f"otp:{email}", expire, otp)
