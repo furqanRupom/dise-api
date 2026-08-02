@@ -32,8 +32,6 @@ class AuthService:
         self.redis = redis
         self.redis_service = RedisService(redis)
 
-    """ STORE REFRESH TOKEN VIA REDIS HERE FOR NOW """
-
     def findById(self, email: str):
         user = self.db.query(User).filter_by(email=email).first()
         if not user:
@@ -217,15 +215,15 @@ class AuthService:
             success=True, message="Check your email for the OTP", data=None
         )
 
-    async def reset_password(self, data: ResetPassword):
-        user = self.db.query(User).filter(User.email == data.email).first()
+    async def reset_password(self, payload: ResetPassword):
+        user = self.db.query(User).filter(User.email == payload.email).first()
         if not user:
             raise HTTPException(status_code=404, detail="User not found")
 
-        if not verify_password(data.current_password, user.password):
+        if not verify_password(payload.current_password, user.password):
             raise HTTPException(status_code=400, detail="Invalid current password")
 
-        user.password = hash_password(data.new_password)
+        user.password = hash_password(payload.new_password)
         self.db.commit()
 
         return SendRespose(

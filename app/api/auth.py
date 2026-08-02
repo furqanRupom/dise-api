@@ -96,10 +96,10 @@ async def forgot_password(
 
 @router.post("/reset-password")
 async def reset_password(
-    data: ResetPassword,
+    payload: ResetPassword,
     service: AuthService = Depends(get_auth_service),
 ):
-    return await service.reset_password(data)
+    return await service.reset_password(payload)
 
 
 @router.post("/logout")
