@@ -26,6 +26,7 @@ class RedisService:
     """ FOR OTP (One-Time Password)."""
 
     async def store_otp(self, email: str, otp: str, expire: int = 300):
+        """FOR OTP (One-Time Password)."""
         await self.redis.setex(f"otp:{email}", expire, otp)
 
     async def verify_otp(self, email: str, otp: str) -> bool:

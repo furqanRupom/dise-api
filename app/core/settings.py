@@ -3,6 +3,7 @@ import uuid
 from datetime import datetime, timedelta, timezone
 
 import jwt
+from fastapi import HTTPException, status
 from pwdlib import PasswordHash
 
 from app.schemas.auth import TokenData
@@ -51,3 +52,18 @@ def create_refresh_token(
         to_encode, settings.SECRET_REFRESH_TOKEN, algorithm=settings.ALGORITHMS
     )
     return token
+
+
+def verify_access_token(token: str) -> dict:
+    """Verify and decode JWT token."""
+    try:
+        payload = jwt.decode(
+            token, settings.SECRET_ACCESS_TOKEN, algorithms=[settings.ALGORITHMS]
+        )
+        return payload
+    except jwt.PyJWTError:
+        raise HTTPException(
+            status_code=status.HTTP_401_UNAUTHORIZED,
+            detail="Could not validate credentials",
+            headers={"WWW-Authenticate": "Bearer"},
+        )

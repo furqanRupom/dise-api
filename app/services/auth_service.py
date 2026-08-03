@@ -32,7 +32,16 @@ class AuthService:
         self.redis = redis
         self.redis_service = RedisService(redis)
 
-    def findById(self, email: str):
+    def find_by_id(self, id: int):
+        user = self.db.query(User).filter_by(id=id).first()
+        if not user:
+            raise HTTPException(
+                status_code=status.HTTP_404_NOT_FOUND,
+                detail="User not exit",
+            )
+        return user
+
+    def find_by_email(self, email: str):
         user = self.db.query(User).filter_by(email=email).first()
         if not user:
             raise HTTPException(
@@ -76,7 +85,7 @@ class AuthService:
         )
 
     async def login(self, data: Login) -> SendRespose:
-        user = self.findById(data.email)
+        user = self.find_by_email(data.email)
         verify_pass = verify_password(data.password, user.password)
         if not verify_pass:
             raise HTTPException(

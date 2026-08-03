@@ -6,8 +6,10 @@ from redis.asyncio import Redis
 from sqlalchemy.orm import Session
 
 from app.core.config import settings
+from app.core.dependencies import get_current_active_user
 from app.db.database import get_db
 from app.db.redis import get_redis
+from app.models import User
 from app.schemas.auth import Login, OTPVerify, Register, ResetPassword
 from app.schemas.response import SendRespose
 from app.services.auth_service import AuthService
@@ -107,3 +109,8 @@ async def logout(response: Response):
     response.delete_cookie(key="access_token")
     response.delete_cookie(key="refresh_token")
     return SendRespose(success=True, message="User logout successfully", data=None)
+
+
+@router.get("/get-me")
+async def get_me(get_user: User = Depends(get_current_active_user)):
+    return get_user
