@@ -1,10 +1,40 @@
+import logging
+from contextlib import asynccontextmanager
+
 from fastapi import FastAPI, status
 
 from app.api.auth import router as auth_router
 
+logger = logging.getLogger(__name__)
+
+
+@asynccontextmanager
+async def lifespan(app: FastAPI):
+    """Manage application startup and shutdown events."""
+
+    logger.info("Starting Dise API...")
+
+    # Initialize resources here
+    # Example:
+    # await connect_database()
+    # await connect_redis()
+
+    yield
+
+    logger.info("Shutting down Dise API...")
+
+    # Clean up resources here
+    # Example:
+    # await disconnect_redis()
+    # await disconnect_database()
+
+
 app = FastAPI(
     title="Dise API",
-    description="Backend API for the Dise project. Handles auth, users, and real-time features.",
+    description=(
+        "Backend API for the Dise project. "
+        "Provides authentication, user management, and other core services."
+    ),
     version="1.0.0",
     contact={
         "name": "Dise Team",
@@ -18,16 +48,31 @@ app = FastAPI(
     docs_url="/docs",
     redoc_url="/redoc",
     openapi_url="/openapi.json",
+    lifespan=lifespan,
 )
 
+# Register routers
 app.include_router(auth_router)
 
 
-@app.get("/", status_code=status.HTTP_200_OK)
-async def hello():
+@app.get(
+    "/",
+    tags=["Health"],
+    summary="Health Check",
+    description="Returns the current status of the API.",
+    status_code=status.HTTP_200_OK,
+)
+async def health_check():
+    """Health check endpoint."""
+
     return {
+        "success": True,
         "statusCode": status.HTTP_200_OK,
-        "message": "successfully running!",
-        "docs": "/docs",
-        "data": {"greetings": "Hello!"},
+        "message": "Dise API is running successfully.",
+        "version": app.version,
+        "documentation": {
+            "swagger": app.docs_url,
+            "redoc": app.redoc_url,
+            "openapi": app.openapi_url,
+        },
     }
