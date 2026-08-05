@@ -14,7 +14,7 @@ from app.schemas.auth import Login, OTPVerify, Register, ResetPassword
 from app.schemas.response import SendRespose
 from app.services.auth_service import AuthService
 
-router = APIRouter(prefix="/auth", tags=["auth"])
+router = APIRouter(prefix="/v1/auth", tags=["auth"])
 
 
 def get_auth_service(
