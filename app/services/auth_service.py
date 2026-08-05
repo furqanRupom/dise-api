@@ -5,6 +5,7 @@ from sqlalchemy.orm import Session
 from starlette.status import HTTP_401_UNAUTHORIZED
 
 from app.core.config import settings
+from app.core.mail_client import send_forgot_password_mail, send_otp_mail
 from app.core.settings import (
     create_access_token,
     create_refresh_token,
@@ -21,7 +22,6 @@ from app.schemas.auth import (
     TokenFair,
 )
 from app.schemas.response import SendRespose
-from app.services.email_service import EmailService
 from app.services.redis_service import RedisService
 from app.utils.auth import generate_otp
 
@@ -74,7 +74,7 @@ class AuthService:
 
         otp = generate_otp()
         await self.redis_service.store_otp(register.email, otp)
-        await EmailService.send_otp_email(register.email, otp, background_tasks)
+        await send_otp_mail(register.email, otp, background_tasks)
 
         return SendRespose(
             success=True,
@@ -129,7 +129,7 @@ class AuthService:
         await self.redis_service.check_rate_limit(email)
         otp = generate_otp()
         await self.redis_service.store_otp(email, otp)
-        await EmailService.send_otp_email(email, otp, background_tasks)
+        await send_otp_mail(email, otp, background_tasks)
         return SendRespose(
             success=True, message="Verification OTP sent successfully", data=None
         )
@@ -218,7 +218,7 @@ class AuthService:
         otp = generate_otp()
         await self.redis_service.store_otp(email, otp)
 
-        await EmailService.send_forgot_password_mail(email, otp, background_tasks)
+        await send_forgot_password_mail(email, otp, background_tasks)
 
         return SendRespose(
             success=True, message="Check your email for the OTP", data=None
