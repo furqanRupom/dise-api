@@ -18,7 +18,7 @@ class Settings(BaseSettings):
     #   TOKEN CONFIG
 
     ALGORITHMS: str = "HS256"
-    SECRET_ACCESS_TOKEN: str = ""  # change to yours
+    SECRET_ACCESS_TOKEN: str = "abdlajdlsj"  # change to yours
     SECRET_REFRESH_TOKEN: str = "abcdefg"
     ACCESS_TOKEN_EXPIRE_MINUTES: int = 15
     REFRESH_TOKEN_EXPIRE_DAYS: int = 30
@@ -38,7 +38,7 @@ class Settings(BaseSettings):
     # Email
     MAIL_USERNAME: str = ""
     MAIL_PASSWORD: str = ""
-    MAIL_FROM: str = ""
+    MAIL_FROM: str = "dise@dise.com"
     MAIL_PORT: int = 587
     MAIL_SERVER: str = "smtp.gmail.com"
     MAIL_FROM_NAME: str = "Your App"
