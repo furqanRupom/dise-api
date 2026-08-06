@@ -1,6 +1,14 @@
 from typing import Annotated
 
-from fastapi import APIRouter, BackgroundTasks, Cookie, Depends, Request, Response
+from fastapi import (
+    APIRouter,
+    BackgroundTasks,
+    Cookie,
+    Depends,
+    HTTPException,
+    Request,
+    Response,
+)
 from pydantic import EmailStr
 from redis.asyncio import Redis
 from sqlalchemy.orm import Session
@@ -121,3 +129,29 @@ async def get_me(get_user: User = Depends(get_current_active_user)):
 async def google_login(request: Request):
     redirect_url = request.url_for("google_callback")
     return await oauth.google.authorize_redirect(request, redirect_uri=redirect_url)
+
+
+@router.get("/google/callback", name="google_callback")
+async def google_callback():
+    try:
+        token = await oauth.google.authorize_access_token()
+        user_info = token.get("userinfo")
+
+        if user_info is None:
+            raise HTTPException(status_code=400, detail="Unable to retrieve user info")
+
+        return {
+            "success": True,
+            "message": "User info retrieved successfully",
+            "data": {
+                "provider": "google",
+                "provider_id": user_info["sub"],
+                "email": user_info["email"],
+                "name": user_info["name"],
+                "picture": user_info.get("picture"),
+                "email_verified": user_info.get("email_verified"),
+            },
+        }
+
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=str(e))
