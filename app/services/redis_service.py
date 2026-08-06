@@ -9,6 +9,7 @@ class RedisService:
         self.redis = redis
 
     """ FOR REFRESH TOKENS."""
+    """ TODO: WE HAVE TO IMPROVE HERE. WE WILL SEE LATER"""
 
     async def store_refresh_token(self, jti: str, user_id: int | str):
         await self.redis.set(
