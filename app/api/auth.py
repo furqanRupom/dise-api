@@ -1,12 +1,13 @@
 from typing import Annotated
 
-from fastapi import APIRouter, BackgroundTasks, Cookie, Depends, Response
+from fastapi import APIRouter, BackgroundTasks, Cookie, Depends, Request, Response
 from pydantic import EmailStr
 from redis.asyncio import Redis
 from sqlalchemy.orm import Session
 
 from app.core.config import settings
 from app.core.dependencies import get_current_active_user
+from app.core.oauth import oauth
 from app.db.database import get_db
 from app.db.redis import get_redis
 from app.models import User
@@ -114,3 +115,9 @@ async def logout(response: Response):
 @router.get("/get-me")
 async def get_me(get_user: User = Depends(get_current_active_user)):
     return get_user
+
+
+@router.get("/google/login")
+async def google_login(request: Request):
+    redirect_url = request.url_for("google_callback")
+    return await oauth.google.authorize_redirect(request, redirect_uri=redirect_url)
