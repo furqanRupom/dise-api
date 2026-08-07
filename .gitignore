@@ -115,3 +115,6 @@ docker-compose.override.yml
 .Trashes
 ehthumbs.db
 Thumbs.db
+
+# .md
+PROJECT_INIT_PLAN.md
