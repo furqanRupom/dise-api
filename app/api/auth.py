@@ -27,7 +27,8 @@ router = APIRouter(prefix="/v1/auth", tags=["auth"])
 
 
 def get_auth_service(
-    db: Session = Depends(get_db), redis: Redis = Depends(get_redis)
+    db: Annotated[Session, Depends(get_db)],
+    redis: Annotated[Redis, Depends(get_redis)],
 ) -> AuthService:
     return AuthService(db, redis)
 
@@ -36,7 +37,7 @@ def get_auth_service(
 async def register_user(
     register: Register,
     background_tasks: BackgroundTasks,
-    service: AuthService = Depends(get_auth_service),
+    service: Annotated[AuthService, Depends(get_auth_service)],
 ):
     registered_user = await service.register(register, background_tasks)
     return registered_user
@@ -44,7 +45,9 @@ async def register_user(
 
 @router.post("/login")
 async def login_user(
-    response: Response, login: Login, service: AuthService = Depends(get_auth_service)
+    response: Response,
+    login: Login,
+    service: Annotated[AuthService, Depends(get_auth_service)],
 ) -> SendRespose:
 
     result = await service.login(login)
@@ -74,7 +77,7 @@ async def login_user(
 async def send_otp(
     email: EmailStr,
     background_tasks: BackgroundTasks,
-    service: AuthService = Depends(get_auth_service),
+    service: Annotated[AuthService, Depends(get_auth_service)],
 ):
     return await service.verification_otp(email, background_tasks)
 
@@ -82,7 +85,7 @@ async def send_otp(
 @router.post("/verify-email")
 async def verify_otp(
     data: OTPVerify,
-    service: AuthService = Depends(get_auth_service),
+    service: Annotated[AuthService, Depends(get_auth_service)],
 ):
     return await service.verify_email(data.email, data.otp)
 
@@ -90,8 +93,8 @@ async def verify_otp(
 @router.post("/refresh-token")
 async def refresh_token(
     response: Response,
+    service: Annotated[AuthService, Depends(get_auth_service)],
     refresh_token: Annotated[str | None, Cookie()] = None,
-    service: AuthService = Depends(get_auth_service),
 ):
     return await service.refresh_session(refresh_token, response)
 
@@ -100,7 +103,7 @@ async def refresh_token(
 async def forgot_password(
     email: EmailStr,
     background_tasks: BackgroundTasks,
-    service: AuthService = Depends(get_auth_service),
+    service: Annotated[AuthService, Depends(get_auth_service)],
 ):
     return await service.forgot_password(email, background_tasks)
 
@@ -108,7 +111,7 @@ async def forgot_password(
 @router.post("/reset-password")
 async def reset_password(
     payload: ResetPassword,
-    service: AuthService = Depends(get_auth_service),
+    service: Annotated[AuthService, Depends(get_auth_service)],
 ):
     return await service.reset_password(payload)
 
@@ -121,7 +124,7 @@ async def logout(response: Response):
 
 
 @router.get("/get-me")
-async def get_me(get_user: User = Depends(get_current_active_user)):
+async def get_me(get_user: Annotated[User, Depends(get_current_active_user)]):
     return get_user
 
 
