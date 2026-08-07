@@ -65,6 +65,8 @@ def get_current_active_user(
 
 
 def require_permission(permission: Permission):
+    """Require a specific permission for the current user."""
+
     def dep(current_user: Annotated[User, Depends(get_current_user)]):
         perms = ROLE_PERMISSIONS.get(current_user.role, set())
         if permission not in perms:
@@ -78,6 +80,8 @@ def require_permission(permission: Permission):
 
 
 def require_roles(roles: list[UserRole]):
+    """Require a specific role for the current user."""
+
     def dep(current_user: Annotated[User, Depends(get_current_user)]):
         if current_user.role not in roles:
             raise HTTPException(status_code=403, detail="Role not allowed")
