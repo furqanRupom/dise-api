@@ -37,9 +37,14 @@ class Coupon(Base, TimestampMixin):
     )
     valid_to: Mapped[datetime] = mapped_column(DateTime(timezone=True), nullable=False)
     is_active: Mapped[bool] = mapped_column(Boolean, default=True)
+
     __table_args__ = (
-        CheckConstraint("discount_value > 0"),
-        CheckConstraint("valid_to > valid_from"),
+        CheckConstraint("discount_value > 0", name="ck_coupons_discount_value"),
+        CheckConstraint("valid_to > valid_from", name="ck_coupons_date_range"),
+        CheckConstraint(
+            "max_usage IS NULL OR max_usage > 0", name="ck_coupons_max_usage"
+        ),
+        CheckConstraint("usage_count >= 0", name="ck_coupons_usage_count"),
     )
 
 

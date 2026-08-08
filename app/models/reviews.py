@@ -10,7 +10,7 @@ from sqlalchemy import (
     Text,
     func,
 )
-from sqlalchemy.orm import Mapped, mapped_column
+from sqlalchemy.orm import Mapped, mapped_column, relationship
 
 from app.db.database import Base
 
@@ -36,7 +36,10 @@ class Review(Base):
     created_at: Mapped[datetime] = mapped_column(
         DateTime(timezone=True), server_default=func.now(), nullable=False
     )
+
+    booking: Mapped["Booking"] = relationship(back_populates="review")
+
     __table_args__ = (
-        CheckConstraint("rating BETWEEN 1 AND 5"),
+        CheckConstraint("rating BETWEEN 1 AND 5", name="ck_reviews_rating"),
         Index("idx_reviews_vehicle", "vehicle_id"),
     )

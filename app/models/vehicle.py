@@ -12,10 +12,12 @@ from sqlalchemy import (
     SmallInteger,
     String,
     func,
+    text,
 )
 from sqlalchemy.orm import Mapped, mapped_column, relationship
 
-from app.models.base import Base, SoftDeleteMixin, TimestampMixin
+from app.db.database import Base
+from app.models.base import SoftDeleteMixin, TimestampMixin
 from app.models.enums import FuelType, TransmissionType, VehicleStatus
 
 
@@ -48,7 +50,6 @@ class Vehicle(Base, TimestampMixin, SoftDeleteMixin):
     owner_id: Mapped[uuid.UUID | None] = mapped_column(
         ForeignKey("users.id", ondelete="SET NULL"), nullable=True
     )
-
     make: Mapped[str] = mapped_column(String(100), nullable=False)
     model: Mapped[str] = mapped_column(String(100), nullable=False)
     year: Mapped[int] = mapped_column(SmallInteger, nullable=False)
@@ -67,18 +68,33 @@ class Vehicle(Base, TimestampMixin, SoftDeleteMixin):
     )
     odometer_km: Mapped[int] = mapped_column(default=0)
 
-    category: Mapped["VehicleCategory"] = relationship(back_populates="vehicles")
+    # selectin: vehicle listing/detail pages always show category + photos,
+    # so these are eager-loaded in 2 extra batched queries instead of
+    # 1-per-vehicle (N+1). `vehicles` on the category side is left lazy
+    # since it can be an unbounded collection you rarely need eagerly.
+    category: Mapped["VehicleCategory"] = relationship(
+        back_populates="vehicles", lazy="selectin"
+    )
     images: Mapped[list["VehicleImage"]] = relationship(
         back_populates="vehicle",
         cascade="all, delete-orphan",
         order_by="VehicleImage.sort_order",
+        lazy="selectin",
     )
 
     __table_args__ = (
         CheckConstraint("year >= 1990", name="ck_vehicles_year"),
         CheckConstraint("seats > 0", name="ck_vehicles_seats"),
         CheckConstraint("daily_rate >= 0", name="ck_vehicles_rate"),
-        Index("idx_vehicles_location_status", "location_id", "status"),
+        # partial index: most queries filter to non-deleted vehicles by
+        # location+status (search/availability), so exclude soft-deleted
+        # rows from the index rather than indexing rows that never match.
+        Index(
+            "idx_vehicles_location_status",
+            "location_id",
+            "status",
+            postgresql_where=text("deleted_at IS NULL"),
+        ),
         Index("idx_vehicles_category", "category_id"),
     )
 
@@ -98,5 +114,4 @@ class VehicleImage(Base):
     created_at: Mapped[datetime] = mapped_column(
         DateTime(timezone=True), server_default=func.now(), nullable=False
     )
-
     vehicle: Mapped["Vehicle"] = relationship(back_populates="images")

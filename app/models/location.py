@@ -3,7 +3,8 @@ import uuid
 from sqlalchemy import Boolean, Numeric, String, Text
 from sqlalchemy.orm import Mapped, mapped_column
 
-from app.models.base import Base, SoftDeleteMixin, TimestampMixin
+from app.db.database import Base
+from app.models.base import SoftDeleteMixin, TimestampMixin
 
 
 class Location(Base, TimestampMixin, SoftDeleteMixin):

@@ -1,9 +1,10 @@
 import uuid
 
 from sqlalchemy import CheckConstraint, Enum, ForeignKey, Numeric, String
-from sqlalchemy.orm import Mapped, mapped_column
+from sqlalchemy.orm import Mapped, mapped_column, relationship
 
-from app.models.base import Base, TimestampMixin
+from app.db.database import Base
+from app.models.base import TimestampMixin
 from app.models.enums import PaymentStatus, PaymentType
 
 
@@ -29,4 +30,7 @@ class Payment(Base, TimestampMixin):
     idempotency_key: Mapped[str] = mapped_column(
         String(100), unique=True, nullable=False
     )
-    __table_args__ = (CheckConstraint("amount >= 0"),)
+
+    booking: Mapped["Booking"] = relationship(back_populates="payments")
+
+    __table_args__ = (CheckConstraint("amount >= 0", name="ck_payments_amount"),)

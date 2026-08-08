@@ -1,13 +1,7 @@
 import uuid
 from datetime import date, datetime
 
-from sqlalchemy import (
-    CheckConstraint,
-    Date,
-    DateTime,
-    ForeignKey,
-    String,
-)
+from sqlalchemy import CheckConstraint, Date, DateTime, ForeignKey, String, func, text
 from sqlalchemy.dialects.postgresql import ExcludeConstraint
 from sqlalchemy.orm import Mapped, mapped_column
 
@@ -31,13 +25,16 @@ class MaintenanceBlock(Base):
         ForeignKey("users.id", ondelete="RESTRICT"), nullable=False
     )
     created_at: Mapped[datetime] = mapped_column(
-        DateTime(timezone=True), server_default="now()", nullable=False
+        DateTime(timezone=True), server_default=func.now(), nullable=False
     )
+
     __table_args__ = (
-        CheckConstraint("end_date >= start_date"),
+        CheckConstraint("end_date >= start_date", name="ck_maintenance_dates"),
+        # Also requires btree_gist (same extension as bookings' exclude constraint).
+        # text() wrap required - see booking.py for why a bare string breaks this.
         ExcludeConstraint(
             ("vehicle_id", "="),
-            ("daterange(start_date, end_date, '[]')", "&&"),
+            (text("daterange(start_date, end_date, '[]')"), "&&"),
             name="excl_no_overlap_maintenance",
         ),
     )

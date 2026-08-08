@@ -9,10 +9,11 @@ from sqlalchemy import (
     SmallInteger,
     String,
     Text,
+    func,
 )
 from sqlalchemy.orm import Mapped, mapped_column, relationship
 
-from app.models.base import Base
+from app.db.database import Base
 from app.models.enums import ReportType
 
 
@@ -34,12 +35,18 @@ class ConditionReport(Base):
         ForeignKey("users.id", ondelete="RESTRICT"), nullable=False
     )
     created_at: Mapped[datetime] = mapped_column(
-        DateTime(timezone=True), server_default="now()", nullable=False
+        DateTime(timezone=True), server_default=func.now(), nullable=False
     )
     images: Mapped[list["ConditionReportImage"]] = relationship(
-        cascade="all, delete-orphan"
+        cascade="all, delete-orphan", lazy="selectin"
     )
-    __table_args__ = (CheckConstraint("fuel_level_pct BETWEEN 0 AND 100"),)
+
+    __table_args__ = (
+        CheckConstraint(
+            "fuel_level_pct BETWEEN 0 AND 100", name="ck_condition_reports_fuel"
+        ),
+        CheckConstraint("odometer_km >= 0", name="ck_condition_reports_odometer"),
+    )
 
 
 class ConditionReportImage(Base):
@@ -50,9 +57,11 @@ class ConditionReportImage(Base):
         unique=True,
     )
     condition_report_id: Mapped[uuid.UUID] = mapped_column(
-        ForeignKey("condition_reports.id", ondelete="CASCADE"), nullable=False
+        ForeignKey("condition_reports.id", ondelete="CASCADE"),
+        nullable=False,
+        index=True,
     )
     image_url: Mapped[str] = mapped_column(String(500), nullable=False)
     created_at: Mapped[datetime] = mapped_column(
-        DateTime(timezone=True), server_default="now()", nullable=False
+        DateTime(timezone=True), server_default=func.now(), nullable=False
     )

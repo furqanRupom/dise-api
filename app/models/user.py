@@ -1,18 +1,16 @@
 import uuid
 from datetime import date
 
-from sqlalchemy import Boolean, Date, Enum, Index, String
+from sqlalchemy import Boolean, Date, Enum, Index, String, text
 from sqlalchemy.orm import Mapped, mapped_column, relationship
 
 from app.db.database import Base
 from app.models.base import SoftDeleteMixin, TimestampMixin
-from app.models.booking import Booking
 from app.models.enums import LicenseStatus, UserRole
 
 
-class User(Base, TimestampMixin):
+class User(Base, TimestampMixin, SoftDeleteMixin):
     __tablename__ = "users"
-
     id: Mapped[uuid.UUID] = mapped_column(
         primary_key=True,
         default=uuid.uuid4,
@@ -34,20 +32,25 @@ class User(Base, TimestampMixin):
     )
     stripe_customer_id: Mapped[str | None] = mapped_column(String(100), unique=True)
 
-    # Relationships
     bookings: Mapped[list["Booking"]] = relationship(
         back_populates="customer", foreign_keys="Booking.customer_id"
     )
 
     __table_args__ = (
+        # Use a raw text() predicate rather than referencing
+        # SoftDeleteMixin.deleted_at.is_(None): at class-body evaluation
+        # time the class isn't mapped yet, so that attribute access
+        # doesn't behave like a real column expression and previously
+        # raised at import time. A partial index on a column name that
+        # belongs to this same table is unambiguous as plain SQL text.
         Index(
             "idx_users_role",
             "role",
-            postgresql_where=SoftDeleteMixin.deleted_at.is_(None),
+            postgresql_where=text("deleted_at IS NULL"),
         ),
         Index(
             "idx_users_active",
             "is_active",
-            postgresql_where=SoftDeleteMixin.deleted_at.is_(None),
+            postgresql_where=text("deleted_at IS NULL"),
         ),
     )
