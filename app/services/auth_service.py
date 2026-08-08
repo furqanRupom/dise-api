@@ -1,3 +1,5 @@
+import uuid
+
 import jwt
 from fastapi import BackgroundTasks, HTTPException, Response, status
 from redis.asyncio import Redis
@@ -32,7 +34,7 @@ class AuthService:
         self.redis = redis
         self.redis_service = RedisService(redis)
 
-    def find_by_id(self, id: int):
+    def find_by_id(self, id: uuid.UUID):
         user = self.db.query(User).filter_by(id=id).first()
         if not user:
             raise HTTPException(
