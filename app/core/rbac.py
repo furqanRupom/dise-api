@@ -1,4 +1,3 @@
-# app/core/rbac.py
 from enum import Enum
 
 from app.models.enums import UserRole
@@ -50,9 +49,11 @@ ROLE_PERMISSIONS: dict[UserRole, set[Permission]] = {
         Permission.LOCATIONS_READ,
     },
     UserRole.support: {
-        Permission.USERS_READ
-        if hasattr(Permission, "USERS_READ")
-        else Permission.USERS_VERIFY_LICENSE,
+        # Was: `Permission.USERS_READ if hasattr(Permission, "USERS_READ")
+        # else Permission.USERS_VERIFY_LICENSE`. USERS_READ is always
+        # defined on the enum, so that conditional always evaluated to
+        # USERS_READ anyway — dead code, simplified to the plain value.
+        Permission.USERS_READ,
         Permission.USERS_VERIFY_LICENSE,
         Permission.BOOKINGS_READ_ALL,
         Permission.BOOKINGS_MANAGE,
