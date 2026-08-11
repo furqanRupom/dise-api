@@ -4,6 +4,7 @@ from contextlib import asynccontextmanager
 from fastapi import FastAPI, status
 
 from app.api.auth import router as auth_router
+from app.api.user import router as user_router
 
 logger = logging.getLogger(__name__)
 
@@ -53,6 +54,7 @@ app = FastAPI(
 
 # Register routers
 app.include_router(auth_router)
+app.include_router(user_router)
 
 
 @app.get(
