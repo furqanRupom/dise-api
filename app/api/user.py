@@ -3,22 +3,47 @@ from typing import Annotated
 from fastapi import APIRouter, Depends
 from sqlalchemy.orm import Session
 
+from app.core.dependencies import get_current_active_user
 from app.db import get_db
-from app.schemas.response import SendRespose
-from app.schemas.user import UserUpdate
+from app.models import User
+from app.schemas.user import ChangePassword, UserUpdate
 from app.services.user_service import UserService
 
-router = APIRouter(prefix="/v1/user", tags=["user"])
+router = APIRouter(
+    prefix="/v1/user",
+    tags=["user"],
+)
 
 
-@router.patch("/{user_id}")
+@router.patch("/profile")
 async def update_user(
-    user_id: str, payload: UserUpdate, db: Annotated[Session, Depends(get_db)]
+    payload: UserUpdate,
+    db: Annotated[Session, Depends(get_db)],
+    current_user: Annotated[
+        User,
+        Depends(get_current_active_user),
+    ],
 ):
     user_service = UserService(db)
-    result = user_service.update_user(user_id, payload)
-    return SendRespose(
-        success=True,
-        message="User updated successfully",
-        data=result,
+
+    return await user_service.update_user(
+        current_user.id,
+        payload,
+    )
+
+
+@router.patch("/change-password")
+async def change_password(
+    payload: ChangePassword,
+    db: Annotated[Session, Depends(get_db)],
+    current_user: Annotated[
+        User,
+        Depends(get_current_active_user),
+    ],
+):
+    user_service = UserService(db)
+
+    return await user_service.change_password(
+        current_user.id,
+        payload,
     )
