@@ -4,7 +4,7 @@ from fastapi import HTTPException, status
 from sqlalchemy import update
 from sqlalchemy.orm import Session
 
-from app.core.settings import hash_password, verify_password
+from app.core.security import hash_password, verify_password
 from app.models import User
 from app.schemas.response import SendRespose
 from app.schemas.user import ChangePassword, UserUpdate

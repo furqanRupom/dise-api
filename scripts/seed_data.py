@@ -72,7 +72,7 @@ random.seed(42)
 # in through your normal auth flow. Falls back to bcrypt directly if the
 # function name/path is different in your codebase.
 try:
-    from app.core.settings import hash_password
+    from app.core.security import hash_password
 except ImportError:
     from passlib.context import CryptContext
 

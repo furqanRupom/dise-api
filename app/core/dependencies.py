@@ -7,7 +7,7 @@ from redis.asyncio import Redis
 from sqlalchemy.orm import Session
 
 from app.core.rbac import ROLE_PERMISSIONS, Permission
-from app.core.settings import verify_access_token
+from app.core.security import verify_access_token
 from app.db import get_redis
 from app.db.database import get_db
 from app.models import UserRole

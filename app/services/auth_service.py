@@ -8,7 +8,7 @@ from starlette.status import HTTP_401_UNAUTHORIZED
 
 from app.core.config import settings
 from app.core.mail_client import send_forgot_password_mail, send_otp_mail
-from app.core.settings import (
+from app.core.security import (
     create_access_token,
     create_refresh_token,
     hash_password,
