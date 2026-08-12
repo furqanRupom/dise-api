@@ -51,5 +51,8 @@ class Settings(BaseSettings):
     GOOGLE_CLIENT_ID: str = ""
     GOOGLE_CLIENT_SECRET: str = ""
 
+    # FRONTEND URLS
+    FRONTEND_HOST: str = "http://localhost:3000"
+
 
 settings = Settings()
