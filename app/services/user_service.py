@@ -61,3 +61,17 @@ class UserService:
             message="Password changed successfully",
             data=None,
         )
+
+    async def delete_account(self, user_id: uuid.UUID):
+        user = self.db.query(User).filter_by(id=user_id).first()
+        if not user:
+            raise HTTPException(
+                status_code=status.HTTP_404_NOT_FOUND, detail="User not found"
+            )
+        user.is_deleted = True
+        self.db.commit()
+        return SendRespose(
+            success=True,
+            message="Account deleted successfully",
+            data=None,
+        )

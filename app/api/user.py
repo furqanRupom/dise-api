@@ -47,3 +47,18 @@ async def change_password(
         current_user.id,
         payload,
     )
+
+
+@router.delete("/delete-account")
+async def delete_account(
+    db: Annotated[Session, Depends(get_db)],
+    current_user: Annotated[
+        User,
+        Depends(get_current_active_user),
+    ],
+):
+    user_service = UserService(db)
+
+    return await user_service.delete_account(
+        current_user.id,
+    )
