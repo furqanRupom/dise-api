@@ -22,7 +22,7 @@ class Login(BaseModel):
 
 
 class TokenData(BaseModel):
-    id: int
+    id: uuid.UUID
     role: str
 
 

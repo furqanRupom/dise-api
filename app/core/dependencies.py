@@ -75,7 +75,7 @@ def get_current_active_user(
             status_code=status.HTTP_403_FORBIDDEN,
             detail="Account is not active",
         )
-    if not current_user.is_deleted:
+    if current_user.is_deleted:
         raise HTTPException(
             status_code=status.HTTP_403_FORBIDDEN,
             detail="Account is deleted",

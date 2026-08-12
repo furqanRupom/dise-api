@@ -29,7 +29,7 @@ def verify_password(password: str, hash: str) -> bool:
 
 
 def create_access_token(data: TokenData, expires_delta: timedelta | None = None):
-    to_encode = data.model_dump()
+    to_encode = data.model_dump(mode="json")
     if expires_delta:
         expire = datetime.now(timezone.utc) + expires_delta
     else:
@@ -47,7 +47,7 @@ def create_refresh_token(
     data: TokenData, expires_delta: timedelta | None = None
 ) -> str:
 
-    to_encode = data.model_dump()
+    to_encode = data.model_dump(mode="json")
 
     expire = datetime.now(timezone.utc) + (
         expires_delta or timedelta(days=settings.REFRESH_TOKEN_EXPIRE_DAYS)
