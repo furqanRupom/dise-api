@@ -24,6 +24,9 @@ class User(Base, TimestampMixin, SoftDeleteMixin):
     )
     date_of_birth: Mapped[date | None] = mapped_column(Date)
     is_active: Mapped[bool] = mapped_column(Boolean, default=False)
+    is_deleted: Mapped[bool] = mapped_column(
+        Boolean, default=False, nullable=False, server_default=text("false")
+    )
     is_verified: Mapped[bool] = mapped_column(Boolean, default=False)
     license_number: Mapped[str | None] = mapped_column(String(50))
     license_document_url: Mapped[str | None] = mapped_column(String(500))
