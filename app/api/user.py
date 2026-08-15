@@ -1,12 +1,12 @@
 from typing import Annotated
 
-from fastapi import APIRouter, Depends
+from fastapi import APIRouter, Depends, File, UploadFile
 from sqlalchemy.orm import Session
 
 from app.core.dependencies import get_current_active_user
 from app.db import get_db
 from app.models import User
-from app.schemas.user import ChangePassword, UserUpdate
+from app.schemas.user import UserUpdate
 from app.services.user_service import UserService
 
 router = APIRouter(
@@ -32,20 +32,20 @@ async def update_user(
     )
 
 
-@router.patch("/change-password")
-async def change_password(
-    payload: ChangePassword,
+@router.patch("/avatar")
+async def update_avatar(
     db: Annotated[Session, Depends(get_db)],
     current_user: Annotated[
         User,
         Depends(get_current_active_user),
     ],
+    file: Annotated[UploadFile, File(...)],
 ):
     user_service = UserService(db)
 
-    return await user_service.change_password(
+    return await user_service.update_avatar(
         current_user.id,
-        payload,
+        file,
     )
 
 
