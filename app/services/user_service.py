@@ -46,7 +46,7 @@ class UserService:
             raise HTTPException(
                 status_code=status.HTTP_404_NOT_FOUND, detail="User not found"
             )
-        avatar_url = await upload_image(file)
+        avatar_url = upload_image(file)
         user.avatar_url = avatar_url
         self.db.commit()
         return SendRespose(
