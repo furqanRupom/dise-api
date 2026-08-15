@@ -55,16 +55,12 @@ class Settings(BaseSettings):
     FRONTEND_HOST: str = "http://localhost:3000"
 
     # FILE UPLOAD
-    STORAGE_BACKEND: str = "local"  # "local" | "s3"
-    LOCAL_STORAGE_DIR: str = "media"
-    LOCAL_STORAGE_BASE_URL: str = "http://127.0.0.1:8000/media"
+    STORAGE_BACKEND: str = "cloudinary"
 
-    S3_BUCKET: str | None = None
-    S3_REGION: str | None = None
-    S3_ENDPOINT_URL: str | None = None  # set this for R2/Spaces/B2, leave None for AWS
-    S3_ACCESS_KEY: str | None = None
-    S3_SECRET_KEY: str | None = None
-    S3_PUBLIC_BASE_URL: str | None = None  # CDN/bucket public URL prefix
+    CLOUDINARY_CLOUD_NAME: str
+    CLOUDINARY_API_KEY: str
+    CLOUDINARY_API_SECRET: str
+    CLOUDINARY_FOLDER: str = "uploads"
 
 
 settings = Settings()
