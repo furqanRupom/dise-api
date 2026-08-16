@@ -8,7 +8,6 @@ A FastAPI backend for a car rental platform. User authentication is fully implem
 
 ## Table of Contents
 
-- [Status](#status)
 - [Tech Stack](#tech-stack)
 - [Quick Start](#quick-start)
 - [Configuration](#configuration)
@@ -21,19 +20,6 @@ A FastAPI backend for a car rental platform. User authentication is fully implem
 - [Roadmap](#roadmap)
 - [Contributing](#contributing)
 - [License](#license)
-
-## Status
-
-| Feature                             | Status     |
-| ----------------------------------- | ---------- |
-| User registration & login (JWT)     | ✅ Done    |
-| Password hashing (Argon2)           | ✅ Done    |
-| Database migrations (Alembic)       | ✅ Done    |
-| Vehicle management                  | 🚧 Planned |
-| Booking / rental system             | 🚧 Planned |
-| Role-based access                   | 🚧 Planned |
-| Refresh tokens                      | 🚧 Planned |
-| Password reset / email verification | 🚧 Planned |
 
 ## Tech Stack
 
@@ -77,7 +63,7 @@ The API is now running at `http://127.0.0.1:8000`.
 Create a `.env` file in the project root with the following variables:
 
 | Variable                      | Description                  | Example                                                      |
-| ----------------------------- | ---------------------------- | ------------------------------------------------------------ |
+| ----------------------------- | ----------------------------- | ------------------------------------------------------------ |
 | `DATABASE_URL`                | PostgreSQL connection string | `postgresql://diseuser:yourpassword@localhost:5432/dise_api` |
 | `SECRET_KEY`                  | Secret used to sign JWTs     | generated, see below                                         |
 | `ALGORITHM`                   | JWT signing algorithm        | `HS256`                                                      |
@@ -154,7 +140,7 @@ Interactive docs are available once the server is running:
 ### Endpoints
 
 | Method | Endpoint         | Description                    | Auth Required |
-| ------ | ---------------- | ------------------------------ | ------------- |
+| ------ | ----------------- | ------------------------------- | ------------- |
 | `POST` | `/auth/register` | Create a new user account      | No            |
 | `POST` | `/auth/login`    | Authenticate and receive a JWT | No            |
 
@@ -188,15 +174,7 @@ pytest
 
 ## Roadmap
 
-- Vehicle management (add, update, delete cars)
-- Car availability & search filters
-- Booking / rental system
-- Role-based access control (admin / user)
-- Refresh token support
-- User profiles & rental history
-- Email verification & password reset
-- Rate limiting & structured logging
-- Unit & integration test suite
+Upcoming work includes vehicle management, booking and rental flows, role-based access control, refresh tokens, and expanded user profile support. See open issues for the current priority list.
 
 ## Contributing
 
