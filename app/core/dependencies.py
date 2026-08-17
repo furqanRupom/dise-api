@@ -6,8 +6,11 @@ from fastapi.security import APIKeyCookie
 from redis.asyncio import Redis
 from sqlalchemy.orm import Session
 
-from app.core.rbac import ROLE_PERMISSIONS, Permission
-from app.core.security import verify_access_token
+from app.core.security import (
+    Permission,
+    PermissionChecker,
+    verify_access_token,
+)
 from app.db import get_redis
 from app.db.database import get_db
 from app.models import UserRole
@@ -87,12 +90,7 @@ def require_permission(permission: Permission):
     """Require a specific permission for the current user."""
 
     def dep(current_user: Annotated[User, Depends(get_current_active_user)]):
-        perms = ROLE_PERMISSIONS.get(current_user.role, set())
-        if permission not in perms:
-            raise HTTPException(
-                status_code=status.HTTP_403_FORBIDDEN,
-                detail=f"Missing permission: {permission}",
-            )
+        PermissionChecker.require_permission(current_user.role, permission)
         return current_user
 
     return dep
@@ -102,8 +100,12 @@ def require_roles(roles: list[UserRole]):
     """Require a specific role for the current user."""
 
     def dep(current_user: Annotated[User, Depends(get_current_active_user)]):
-        if current_user.role not in roles:
-            raise HTTPException(status_code=403, detail="Role not allowed")
+        PermissionChecker.require_role(current_user.role, list(roles))
         return current_user
 
     return dep
+
+
+require_admin = require_roles([UserRole.admin])
+require_staff = require_roles([UserRole.fleet_staff])
+require_user = require_roles([UserRole.customer])
