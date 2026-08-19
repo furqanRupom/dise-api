@@ -21,9 +21,8 @@ from app.schemas.auth import (
     RegisterResponse,
     ResetPassword,
     TokenData,
-    TokenFair,
+    TokenPair,
 )
-from app.schemas.response import SendRespose
 from app.services.redis_service import RedisService
 from app.utils.auth import generate_otp
 
@@ -54,7 +53,7 @@ class AuthService:
 
     async def register(
         self, register: Register, background_tasks: BackgroundTasks
-    ) -> SendRespose:
+    ) -> RegisterResponse:
         is_exit = self.db.query(User).filter(User.email == register.email).first()
         if is_exit:
             raise HTTPException(
@@ -78,15 +77,13 @@ class AuthService:
         await self.redis_service.store_otp(register.email, otp)
         await send_otp_mail(register.email, otp, background_tasks)
 
-        return SendRespose(
-            success=True,
-            message="User Registered Successfully.check your mail",
-            data=RegisterResponse(
-                id=new_user.id, name=new_user.name, email=new_user.email
-            ),
+        return RegisterResponse(
+            id=new_user.id,
+            name=new_user.name,
+            email=new_user.email,
         )
 
-    async def login(self, data: Login) -> SendRespose:
+    async def login(self, data: Login) -> TokenPair:
         user = self.find_by_email(data.email)
         verify_pass = verify_password(data.password, user.password)
         if not verify_pass:
@@ -115,13 +112,11 @@ class AuthService:
 
         # STORING REFRESH TOKEN IN REDIS
         await self.redis_service.store_refresh_token(jti, user.id)
-        return SendRespose(
-            success=True,
-            message="User Logged in Successfully",
-            data=TokenFair(access_token=access_token, refresh_token=refresh_token),
-        )
+        return TokenPair(access_token=access_token, refresh_token=refresh_token)
 
-    async def verification_otp(self, email: str, background_tasks: BackgroundTasks):
+    async def verification_otp(
+        self, email: str, background_tasks: BackgroundTasks
+    ) -> bool:
         user = self.db.query(User).filter(User.email == email).first()
         if not user:
             raise HTTPException(
@@ -132,11 +127,9 @@ class AuthService:
         otp = generate_otp()
         await self.redis_service.store_otp(email, otp)
         await send_otp_mail(email, otp, background_tasks)
-        return SendRespose(
-            success=True, message="Verification OTP sent successfully", data=None
-        )
+        return True
 
-    async def verify_email(self, email: str, otp: str):
+    async def verify_email(self, email: str, otp: str) -> bool:
         await self.redis_service.verify_otp(email, otp)
         user = self.db.query(User).filter(User.email == email).first()
         if not user:
@@ -146,11 +139,11 @@ class AuthService:
 
         user.is_verified = True
         self.db.commit()
-        return SendRespose(
-            success=True, message="user verified successfully", data=None
-        )
+        return True
 
-    async def refresh_session(self, refresh_token: str | None, response: Response):
+    async def refresh_session(
+        self, refresh_token: str | None, response: Response
+    ) -> bool:
         if not refresh_token:
             raise HTTPException(
                 status_code=HTTP_401_UNAUTHORIZED, detail="Refresh Token is missing!"
@@ -208,11 +201,11 @@ class AuthService:
             secure=True,
         )
 
-        return SendRespose(
-            success=True, message="Tokens refreshed successfully", data=None
-        )
+        return True
 
-    async def forgot_password(self, email: str, background_tasks: BackgroundTasks):
+    async def forgot_password(
+        self, email: str, background_tasks: BackgroundTasks
+    ) -> bool:
         user = self.db.query(User).filter(User.email == email).first()
         if not user:
             raise HTTPException(status_code=404, detail="User not found")
@@ -222,11 +215,9 @@ class AuthService:
 
         await send_forgot_password_mail(email, otp, background_tasks)
 
-        return SendRespose(
-            success=True, message="Check your email for the OTP", data=None
-        )
+        return True
 
-    async def reset_password(self, payload: ResetPassword):
+    async def reset_password(self, payload: ResetPassword) -> bool:
         user = self.db.query(User).filter(User.email == payload.email).first()
         if not user:
             raise HTTPException(status_code=404, detail="User not found")
@@ -237,6 +228,4 @@ class AuthService:
         user.password = hash_password(payload.new_password)
         self.db.commit()
 
-        return SendRespose(
-            success=True, message="Password reset successfully", data=None
-        )
+        return True

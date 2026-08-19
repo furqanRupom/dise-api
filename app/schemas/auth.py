@@ -26,7 +26,7 @@ class TokenData(BaseModel):
     role: str
 
 
-class TokenFair(BaseModel):
+class TokenPair(BaseModel):
     access_token: str
     refresh_token: str
 
