@@ -34,16 +34,26 @@ class LocationService:
         location_id: uuid.UUID,
         payload: LocationUpdate,
     ):
-        location = self.db.query(Location).filter(Location.id == location_id).first()
-        if location:
-            for key, value in payload.model_dump().items():
-                setattr(location, key, value)
-            self.db.commit()
-            self.db.refresh(location)
-            return location
-        raise HTTPException(
-            status_code=status.HTTP_404_NOT_FOUND, detail="Location not found"
+        location = (
+            self.db.query(Location)
+            .filter(
+                Location.id == location_id,
+                Location.is_deleted == False,
+                Location.is_active == True,
+            )
+            .first()
         )
+        if not location:
+            raise HTTPException(
+                status_code=status.HTTP_404_NOT_FOUND, detail="Location not found"
+            )
+
+        update_data = payload.model_dump(exclude_unset=True)
+        for key, value in update_data.items():
+            setattr(location, key, value)
+        self.db.commit()
+        self.db.refresh(location)
+        return location
 
     """
     Retrieves a location by its ID.
