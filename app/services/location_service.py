@@ -52,7 +52,12 @@ class LocationService:
     def get_location(
         self,
     ):
-        locations = self.db.query(Location).all()
+        locations = (
+            self.db.query(Location)
+            .filter(Location.is_deleted == False)
+            .order_by(Location.created_at.desc())
+            .all()
+        )
         return locations
 
     """
