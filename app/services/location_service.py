@@ -1,11 +1,10 @@
 import uuid
 
-from fastapi import HTTPException
+from fastapi import HTTPException, status
 from sqlalchemy.orm import Session
 
 from app.models import Location
 from app.schemas.location import LocationCreate, LocationUpdate
-from app.schemas.response import SendRespose
 
 
 class LocationService:
@@ -23,11 +22,7 @@ class LocationService:
         location = Location(**payload.model_dump())
         self.db.add(location)
         self.db.commit()
-        return SendRespose(
-            success=True,
-            message="Location created successfully",
-            data=location,
-        )
+        return location
 
     """
     Updates an existing location in the database.
@@ -43,12 +38,10 @@ class LocationService:
             for key, value in payload.model_dump().items():
                 setattr(location, key, value)
             self.db.commit()
-            return SendRespose(
-                success=True,
-                message="Location updated successfully",
-                data=location,
-            )
-        raise HTTPException(status_code=404, detail="Location not found")
+            return location
+        raise HTTPException(
+            status_code=status.HTTP_404_NOT_FOUND, detail="Location not found"
+        )
 
     """
     Retrieves a location by its ID.
@@ -58,11 +51,7 @@ class LocationService:
         self,
     ):
         locations = self.db.query(Location).all()
-        return SendRespose(
-            success=True,
-            message="Locations retrieved successfully",
-            data=locations,
-        )
+        return locations
 
     """
     Retrieves a location by its ID.
@@ -73,11 +62,7 @@ class LocationService:
         location_id: uuid.UUID,
     ):
         location = self.db.query(Location).filter(Location.id == location_id).first()
-        return SendRespose(
-            success=True,
-            message="Location retrieved successfully",
-            data=location,
-        )
+        return location
 
     """
     Deletes a location by its ID.
@@ -91,13 +76,7 @@ class LocationService:
         if location:
             self.db.delete(location)
             self.db.commit()
-            return SendRespose(
-                success=True,
-                message="Location deleted successfully",
-                data=None,
-            )
-        return SendRespose(
-            success=False,
-            message="Location not found",
-            data=None,
+            return location
+        raise HTTPException(
+            status_code=status.HTTP_404_NOT_FOUND, detail="Location not found"
         )
