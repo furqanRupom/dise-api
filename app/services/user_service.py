@@ -7,7 +7,6 @@ from sqlalchemy.orm import Session
 from app.core.cloudinary import upload_image
 from app.core.security import hash_password, verify_password
 from app.models import User
-from app.schemas.response import SendRespose
 from app.schemas.user import ChangePassword, UserUpdate
 
 
@@ -34,11 +33,7 @@ class UserService:
                 status_code=status.HTTP_404_NOT_FOUND, detail="User not found"
             )
         self.db.commit()
-        return SendRespose(
-            success=True,
-            message="User updated successfully",
-            data=updated_user,
-        )
+        return updated_user
 
     async def update_avatar(self, user_id: uuid.UUID, file: UploadFile):
         user = self.db.query(User).filter_by(id=user_id).first()
@@ -49,11 +44,7 @@ class UserService:
         avatar_url = upload_image(file)
         user.avatar_url = avatar_url
         self.db.commit()
-        return SendRespose(
-            success=True,
-            message="Avatar updated successfully",
-            data=user,
-        )
+        return user
 
     async def change_password(self, user_id: uuid.UUID, payload: ChangePassword):
         user = self.db.query(User).filter_by(id=user_id).first()
@@ -72,11 +63,6 @@ class UserService:
         hash_pass = hash_password(payload.new_password)
         user.password = hash_pass
         self.db.commit()
-        return SendRespose(
-            success=True,
-            message="Password changed successfully",
-            data=None,
-        )
 
     async def delete_account(self, user_id: uuid.UUID):
         user = self.db.query(User).filter_by(id=user_id).first()
@@ -86,8 +72,3 @@ class UserService:
             )
         user.is_deleted = True
         self.db.commit()
-        return SendRespose(
-            success=True,
-            message="Account deleted successfully",
-            data=None,
-        )

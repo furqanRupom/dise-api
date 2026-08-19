@@ -42,6 +42,13 @@ class UserUpdate(BaseModel):
     )
 
 
+class UserAvatarUpdate(BaseModel):
+    avatar_url: str | None = Field(
+        default=None,
+        max_length=500,
+    )
+
+
 # ============================================================
 # Admin update
 # ============================================================
