@@ -12,6 +12,10 @@ class LocationService:
     def __init__(self, db: Session):
         self.db = db
 
+    """
+    Creates a new location in the database.
+    """
+
     def create_location(
         self,
         payload: LocationCreate,
@@ -24,6 +28,10 @@ class LocationService:
             message="Location created successfully",
             data=location,
         )
+
+    """
+    Updates an existing location in the database.
+    """
 
     def update_location(
         self,
@@ -42,6 +50,10 @@ class LocationService:
             )
         raise HTTPException(status_code=404, detail="Location not found")
 
+    """
+    Retrieves a location by its ID.
+    """
+
     def get_location(
         self,
     ):
@@ -51,6 +63,10 @@ class LocationService:
             message="Locations retrieved successfully",
             data=locations,
         )
+
+    """
+    Retrieves a location by its ID.
+    """
 
     def get_location_by_id(
         self,
@@ -62,6 +78,10 @@ class LocationService:
             message="Location retrieved successfully",
             data=location,
         )
+
+    """
+    Deletes a location by its ID.
+    """
 
     def delete_location(
         self,
@@ -81,5 +101,3 @@ class LocationService:
             message="Location not found",
             data=None,
         )
-
-    # TODO : CREATE AND UPDATE WE WILL DO LATER
