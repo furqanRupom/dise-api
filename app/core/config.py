@@ -57,9 +57,9 @@ class Settings(BaseSettings):
     # FILE UPLOAD
     STORAGE_BACKEND: str = "cloudinary"
 
-    CLOUDINARY_CLOUD_NAME: str
-    CLOUDINARY_API_KEY: str
-    CLOUDINARY_API_SECRET: str
+    CLOUDINARY_CLOUD_NAME: str = "sjdlk"
+    CLOUDINARY_API_KEY: str = "dsjaldk"
+    CLOUDINARY_API_SECRET: str = "dsjaldk;js"
     CLOUDINARY_FOLDER: str = "uploads"
 
 
