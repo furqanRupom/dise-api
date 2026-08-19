@@ -22,6 +22,7 @@ class LocationService:
         location = Location(**payload.model_dump())
         self.db.add(location)
         self.db.commit()
+        self.db.refresh(location)
         return location
 
     """
@@ -38,6 +39,7 @@ class LocationService:
             for key, value in payload.model_dump().items():
                 setattr(location, key, value)
             self.db.commit()
+            self.db.refresh(location)
             return location
         raise HTTPException(
             status_code=status.HTTP_404_NOT_FOUND, detail="Location not found"
@@ -74,8 +76,9 @@ class LocationService:
     ):
         location = self.db.query(Location).filter(Location.id == location_id).first()
         if location:
-            self.db.delete(location)
+            location.is_deleted = True
             self.db.commit()
+            self.db.refresh(location)
             return location
         raise HTTPException(
             status_code=status.HTTP_404_NOT_FOUND, detail="Location not found"
