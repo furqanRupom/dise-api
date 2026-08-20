@@ -1,3 +1,4 @@
+from datetime import datetime, timezone
 from uuid import UUID
 
 from fastapi import HTTPException, status
@@ -42,7 +43,7 @@ class CouponService:
                 detail="Coupon could not be created",
             )
 
-    def get_coupon(self, coupon_id: str):
+    def get_coupon(self, coupon_id: UUID):
         coupon = self.db.query(Coupon).filter_by(id=coupon_id).first()
         if not coupon:
             raise HTTPException(
@@ -114,3 +115,32 @@ class CouponService:
                 status_code=status.HTTP_409_CONFLICT,
                 detail="Coupon could not be updated",
             )
+
+    def delete_coupon(self, coupon_id: UUID):
+        coupon = self.get_coupon(coupon_id)
+        if not coupon:
+            raise HTTPException(
+                status_code=status.HTTP_404_NOT_FOUND,
+                detail="Coupon not found",
+            )
+        coupon.is_active = False
+        self.db.commit()
+        return coupon
+
+    def activate_coupon(self, coupon_id: UUID):
+        coupon = self.get_coupon(coupon_id)
+        if not coupon:
+            raise HTTPException(
+                status_code=status.HTTP_404_NOT_FOUND,
+                detail="Coupon not found",
+            )
+        now = datetime.now(timezone.utc)
+        if now > coupon.valid_to:
+            raise HTTPException(
+                status_code=status.HTTP_400_BAD_REQUEST,
+                detail="Coupon is not valid anymore",
+            )
+
+        coupon.is_active = True
+        self.db.commit()
+        return coupon
