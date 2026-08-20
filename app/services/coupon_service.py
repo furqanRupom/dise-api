@@ -39,3 +39,12 @@ class CouponService:
                 status_code=status.HTTP_409_CONFLICT,
                 detail="Coupon could not be created",
             )
+
+    def get_coupon(self, coupon_id: str):
+        coupon = self.db.query(Coupon).filter_by(id=coupon_id).first()
+        if not coupon:
+            raise HTTPException(
+                status_code=status.HTTP_404_NOT_FOUND,
+                detail="Coupon not found",
+            )
+        return coupon
