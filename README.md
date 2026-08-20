@@ -5,9 +5,11 @@ A FastAPI backend for a car rental platform. User authentication is fully implem
 [![Python](https://img.shields.io/badge/python-3.12%2B-blue)](<>)
 [![FastAPI](https://img.shields.io/badge/framework-FastAPI-009688)](<>)
 [![License](https://img.shields.io/badge/license-MIT-green)](<>)
+[![Status](https://img.shields.io/badge/status-active--development-yellow)](<>)
 
 ## Table of Contents
 
+- [Features](#features)
 - [Tech Stack](#tech-stack)
 - [Quick Start](#quick-start)
 - [Configuration](#configuration)
@@ -21,15 +23,26 @@ A FastAPI backend for a car rental platform. User authentication is fully implem
 - [Contributing](#contributing)
 - [License](#license)
 
+## Features
+
+- ✅ User registration and JWT-based authentication
+- ✅ Secure password hashing with Argon2 (pwdlib)
+- ✅ PostgreSQL persistence via SQLAlchemy 2.x
+- ✅ Schema-driven migrations with Alembic
+- ✅ Request/response validation with Pydantic v2
+- 🚧 Vehicle listings, bookings, and rental management (in progress)
+
 ## Tech Stack
 
-- **Framework:** FastAPI
-- **Language:** Python 3.12+
-- **Database:** PostgreSQL, via SQLAlchemy 2.x
-- **Migrations:** Alembic
-- **Validation:** Pydantic v2
-- **Auth:** JWT + Argon2 (pwdlib)
-- **Server:** Uvicorn
+| Layer      | Technology                      |
+| ---------- | ------------------------------- |
+| Framework  | FastAPI                         |
+| Language   | Python 3.12+                    |
+| Database   | PostgreSQL (via SQLAlchemy 2.x) |
+| Migrations | Alembic                         |
+| Validation | Pydantic v2                     |
+| Auth       | JWT + Argon2 (pwdlib)           |
+| Server     | Uvicorn                         |
 
 ## Quick Start
 
@@ -62,12 +75,12 @@ The API is now running at `http://127.0.0.1:8000`.
 
 Create a `.env` file in the project root with the following variables:
 
-| Variable                      | Description                  | Example                                                      |
-| ----------------------------- | ----------------------------- | ------------------------------------------------------------ |
-| `DATABASE_URL`                | PostgreSQL connection string | `postgresql://diseuser:yourpassword@localhost:5432/dise_api` |
-| `SECRET_KEY`                  | Secret used to sign JWTs     | generated, see below                                         |
-| `ALGORITHM`                   | JWT signing algorithm        | `HS256`                                                      |
-| `ACCESS_TOKEN_EXPIRE_MINUTES` | Access token lifetime        | `30`                                                         |
+| Variable                      | Description                     | Example                                                      |
+| ----------------------------- | ------------------------------- | ------------------------------------------------------------ |
+| `DATABASE_URL`                | PostgreSQL connection string    | `postgresql://diseuser:yourpassword@localhost:5432/dise_api` |
+| `SECRET_KEY`                  | Secret used to sign JWTs        | generated, see below                                         |
+| `ALGORITHM`                   | JWT signing algorithm           | `HS256`                                                      |
+| `ACCESS_TOKEN_EXPIRE_MINUTES` | Access token lifetime (minutes) | `30`                                                         |
 
 Generate a secure secret key:
 
@@ -117,6 +130,12 @@ docker compose up --build
 
 This builds the app image, starts PostgreSQL, and runs the API. Update the `.env` values (or the compose file's environment section) to match your local configuration before starting.
 
+To stop and remove containers:
+
+```bash
+docker compose down
+```
+
 ## Running in Production
 
 ```bash
@@ -128,6 +147,7 @@ For production deployments, also consider:
 - Running behind a reverse proxy (e.g. Nginx) with HTTPS termination
 - Setting `ACCESS_TOKEN_EXPIRE_MINUTES` and `SECRET_KEY` explicitly via environment/secret manager, not `.env`
 - Enabling structured logging and a process manager (systemd, Docker, or similar)
+- Restricting CORS origins and rate-limiting sensitive endpoints (e.g. `/auth/login`)
 
 ## API Reference
 
@@ -140,9 +160,11 @@ Interactive docs are available once the server is running:
 ### Endpoints
 
 | Method | Endpoint         | Description                    | Auth Required |
-| ------ | ----------------- | ------------------------------- | ------------- |
+| ------ | ---------------- | ------------------------------ | ------------- |
 | `POST` | `/auth/register` | Create a new user account      | No            |
 | `POST` | `/auth/login`    | Authenticate and receive a JWT | No            |
+
+More endpoints (vehicles, bookings, rentals) will be documented here as they're implemented — see [Roadmap](#roadmap).
 
 ## Project Structure
 
@@ -170,11 +192,24 @@ dise-api/
 pytest
 ```
 
+To run with coverage:
+
+```bash
+pytest --cov=app --cov-report=term-missing
+```
+
 > Add a test suite under `tests/` as features are implemented. See [Roadmap](#roadmap) for planned coverage.
 
 ## Roadmap
 
-Upcoming work includes vehicle management, booking and rental flows, role-based access control, refresh tokens, and expanded user profile support. See open issues for the current priority list.
+- [ ] Vehicle listing management (CRUD)
+- [ ] Booking and rental flows
+- [ ] Role-based access control (admin, staff, customer)
+- [ ] Refresh token support
+- [ ] Expanded user profile support
+- [ ] Automated test suite with CI
+
+See open issues for the current priority list.
 
 ## Contributing
 
@@ -183,7 +218,8 @@ Issues and pull requests are welcome. For larger changes, please open an issue f
 1. Fork the repo and create a feature branch
 2. Make your changes, following the existing project structure
 3. Ensure `alembic upgrade head` and the app still start cleanly
-4. Open a pull request with a clear description of the change
+4. Run `pytest` and confirm all tests pass
+5. Open a pull request with a clear description of the change
 
 ## License
 
