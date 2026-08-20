@@ -13,6 +13,10 @@ class CouponService:
     def __init__(self, db: Session):
         self.db = db
 
+    def get_coupons(self):
+        coupons = self.db.query(Coupon).order_by(Coupon.created_at.desc()).all()
+        return coupons
+
     def create_coupon(self, payload: CouponCreate):
         code = payload.code.strip().upper()
 
@@ -142,5 +146,16 @@ class CouponService:
             )
 
         coupon.is_active = True
+        self.db.commit()
+        return coupon
+
+    def deactivate_coupon(self, coupon_id: UUID):
+        coupon = self.get_coupon(coupon_id)
+        if not coupon:
+            raise HTTPException(
+                status_code=status.HTTP_404_NOT_FOUND,
+                detail="Coupon not found",
+            )
+        coupon.is_active = False
         self.db.commit()
         return coupon
