@@ -33,7 +33,11 @@ class CouponService:
                 detail="valid_to must be after valid_from",
             )
 
-        coupon = Coupon(**payload.model_dump(exclude={"code"}))
+        coupon_data = payload.model_dump(exclude={"code"})
+        coupon = Coupon(
+            **coupon_data,
+            code=code,
+        )
 
         try:
             self.db.add(coupon)
