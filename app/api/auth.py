@@ -123,7 +123,7 @@ async def logout(response: Response):
     return SendRespose(success=True, message="User logout successfully", data=None)
 
 
-@router.get("/get-me", response_model=User)
+@router.get("/get-me")
 async def get_me(get_user: Annotated[User, Depends(get_current_active_user)]):
     return get_user
 

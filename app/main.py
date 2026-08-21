@@ -5,6 +5,7 @@ from fastapi import FastAPI, status
 from fastapi.middleware.cors import CORSMiddleware
 
 from app.api.auth import router as auth_router
+from app.api.coupon import router as coupon_router
 from app.api.location import router as location_router
 from app.api.user import router as user_router
 from app.core.config import settings
@@ -69,6 +70,7 @@ app.add_middleware(
 app.include_router(auth_router)
 app.include_router(user_router)
 app.include_router(location_router)
+app.include_router(coupon_router)
 
 
 @app.get(
