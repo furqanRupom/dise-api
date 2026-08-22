@@ -30,6 +30,9 @@ class VehicleCategory(Base, TimestampMixin):
     )
     name: Mapped[str] = mapped_column(String(100), unique=True, nullable=False)
     description: Mapped[str | None] = mapped_column(String(500))
+    is_active: Mapped[bool] = mapped_column(
+        default=True, nullable=False, server_default=text("true")
+    )
     vehicles: Mapped[list["Vehicle"]] = relationship(back_populates="category")
 
 
