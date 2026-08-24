@@ -4,8 +4,8 @@ from datetime import datetime, timezone
 from fastapi import HTTPException, status
 from sqlalchemy.orm import Session
 
-from app.api.vehicle_category import VehicleCategoryCreate
 from app.models import VehicleCategory
+from app.schemas.vehicle_category import VehicleCategoryCreate, VehicleCategoryUpdate
 
 
 class VehicleCategoryService:
@@ -53,7 +53,7 @@ class VehicleCategoryService:
     def update_vehicle_category(
         self,
         vehicle_category_id: uuid.UUID,
-        payload: VehicleCategoryCreate,
+        payload: VehicleCategoryUpdate,
     ):
         vehicle_category = (
             self.db.query(VehicleCategory)
