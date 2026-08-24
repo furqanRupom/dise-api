@@ -8,6 +8,7 @@ from app.api.auth import router as auth_router
 from app.api.coupon import router as coupon_router
 from app.api.location import router as location_router
 from app.api.user import router as user_router
+from app.api.vehicle_category import router as vehicle_category_router
 from app.core.config import settings
 
 logger = logging.getLogger(__name__)
@@ -71,6 +72,7 @@ app.include_router(auth_router)
 app.include_router(user_router)
 app.include_router(location_router)
 app.include_router(coupon_router)
+app.include_router(vehicle_category_router)
 
 
 @app.get(
