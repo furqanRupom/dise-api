@@ -1,4 +1,5 @@
 import uuid
+from datetime import datetime, timezone
 
 from fastapi import HTTPException, status
 from sqlalchemy.orm import Session
@@ -38,8 +39,8 @@ class LocationService:
             self.db.query(Location)
             .filter(
                 Location.id == location_id,
-                Location.is_deleted == False,
-                Location.is_active == True,
+                Location.deleted_at.is_(None),
+                Location.is_active.is_(True),
             )
             .first()
         )
@@ -64,7 +65,7 @@ class LocationService:
     ):
         locations = (
             self.db.query(Location)
-            .filter(Location.is_deleted == False)
+            .filter(Location.deleted_at._is(None))
             .order_by(Location.created_at.desc())
             .all()
         )
@@ -78,7 +79,11 @@ class LocationService:
         self,
         location_id: uuid.UUID,
     ):
-        location = self.db.query(Location).filter(Location.id == location_id).first()
+        location = (
+            self.db.query(Location)
+            .filter(Location.id == location_id, Location.deleted_at.is_(None))
+            .first()
+        )
         return location
 
     """
@@ -89,9 +94,13 @@ class LocationService:
         self,
         location_id: uuid.UUID,
     ):
-        location = self.db.query(Location).filter(Location.id == location_id).first()
+        location = (
+            self.db.query(Location)
+            .filter(Location.id == location_id, Location.deleted_at.is_(None))
+            .first()
+        )
         if location:
-            location.is_deleted = True
+            location.deleted_at = datetime.now(timezone.utc)
             self.db.commit()
             self.db.refresh(location)
             return location
