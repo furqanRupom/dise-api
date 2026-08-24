@@ -34,7 +34,9 @@ class AuthService:
         self.redis_service = RedisService(redis)
 
     def find_by_id(self, id: uuid.UUID):
-        user = self.db.query(User).filter_by(id=id).first()
+        user = (
+            self.db.query(User).filter(User.id == id, User.deleted_at.is_(None)).first()
+        )
         if not user:
             raise HTTPException(
                 status_code=status.HTTP_404_NOT_FOUND,
@@ -43,7 +45,11 @@ class AuthService:
         return user
 
     def find_by_email(self, email: str):
-        user = self.db.query(User).filter_by(email=email).first()
+        user = (
+            self.db.query(User)
+            .filter(User.email == email, User.deleted_at.is_(None))
+            .first()
+        )
         if not user:
             raise HTTPException(
                 status_code=status.HTTP_404_NOT_FOUND,
@@ -54,7 +60,11 @@ class AuthService:
     async def register(
         self, register: Register, background_tasks: BackgroundTasks
     ) -> RegisterResponse:
-        is_exit = self.db.query(User).filter(User.email == register.email).first()
+        is_exit = (
+            self.db.query(User)
+            .filter(User.email == register.email, User.deleted_at.is_(None))
+            .first()
+        )
         if is_exit:
             raise HTTPException(
                 status_code=status.HTTP_409_CONFLICT,

@@ -1,4 +1,5 @@
 import uuid
+from datetime import datetime, timezone
 
 from fastapi import HTTPException, UploadFile, status
 from sqlalchemy import update
@@ -65,10 +66,14 @@ class UserService:
         self.db.commit()
 
     async def delete_account(self, user_id: uuid.UUID):
-        user = self.db.query(User).filter_by(id=user_id).first()
+        user = (
+            self.db.query(User)
+            .filter(User.id == user_id, User.deleted_at.is_(None))
+            .first()
+        )
         if not user:
             raise HTTPException(
                 status_code=status.HTTP_404_NOT_FOUND, detail="User not found"
             )
-        user.is_deleted = True
+        user.deleted_at = datetime.now(timezone.utc)
         self.db.commit()
