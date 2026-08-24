@@ -1,6 +1,6 @@
 import uuid
 
-from sqlalchemy import Boolean, Numeric, String, Text, text
+from sqlalchemy import Boolean, Numeric, String, Text
 from sqlalchemy.orm import Mapped, mapped_column
 
 from app.db.database import Base
@@ -18,6 +18,3 @@ class Location(Base, TimestampMixin, SoftDeleteMixin):
     latitude: Mapped[float | None] = mapped_column(Numeric(9, 6))
     longitude: Mapped[float | None] = mapped_column(Numeric(9, 6))
     is_active: Mapped[bool] = mapped_column(Boolean, default=True)
-    is_deleted: Mapped[bool] = mapped_column(
-        Boolean, default=False, nullable=False, server_default=text("false")
-    )

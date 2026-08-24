@@ -21,7 +21,7 @@ from app.models.base import SoftDeleteMixin, TimestampMixin
 from app.models.enums import FuelType, TransmissionType, VehicleStatus
 
 
-class VehicleCategory(Base, TimestampMixin):
+class VehicleCategory(Base, TimestampMixin, SoftDeleteMixin):
     __tablename__ = "vehicle_categories"
     id: Mapped[uuid.UUID] = mapped_column(
         primary_key=True,
