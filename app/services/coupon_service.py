@@ -52,7 +52,11 @@ class CouponService:
             )
 
     def get_coupon(self, coupon_id: UUID):
-        coupon = self.db.query(Coupon).filter_by(id=coupon_id).first()
+        coupon = (
+            self.db.query(Coupon)
+            .filter(Coupon.id == coupon_id, Coupon.deleted_at.is_(None))
+            .first()
+        )
         if not coupon:
             raise HTTPException(
                 status_code=status.HTTP_404_NOT_FOUND,
@@ -131,7 +135,7 @@ class CouponService:
                 status_code=status.HTTP_404_NOT_FOUND,
                 detail="Coupon not found",
             )
-        coupon.is_active = False
+        coupon.deleted_at = datetime.now(timezone.utc)
         self.db.commit()
         return coupon
 

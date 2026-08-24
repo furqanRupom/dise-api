@@ -14,11 +14,11 @@ from sqlalchemy import (
 from sqlalchemy.orm import Mapped, mapped_column
 
 from app.db.database import Base
-from app.models.base import TimestampMixin
+from app.models.base import SoftDeleteMixin, TimestampMixin
 from app.models.enums import DiscountType
 
 
-class Coupon(Base, TimestampMixin):
+class Coupon(Base, TimestampMixin, SoftDeleteMixin):
     __tablename__ = "coupons"
     id: Mapped[uuid.UUID] = mapped_column(
         primary_key=True,
