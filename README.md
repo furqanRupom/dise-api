@@ -2,10 +2,10 @@
 
 A FastAPI backend for a car rental platform. User authentication is fully implemented; vehicle listings, bookings, and rental management are next.
 
-[![Python](https://img.shields.io/badge/python-3.12%2B-blue)](<>)
-[![FastAPI](https://img.shields.io/badge/framework-FastAPI-009688)](<>)
-[![License](https://img.shields.io/badge/license-MIT-green)](<>)
-[![Status](https://img.shields.io/badge/status-active--development-yellow)](<>)
+[![Python](https://img.shields.io/badge/python-3.12%2B-blue)](https://www.python.org/downloads/)
+[![FastAPI](https://img.shields.io/badge/framework-FastAPI-009688)](https://fastapi.tiangolo.com/)
+[![License](https://img.shields.io/badge/license-MIT-green)](LICENSE)
+[![Status](https://img.shields.io/badge/status-active--development-yellow)](.)
 
 ## Table of Contents
 
@@ -26,8 +26,8 @@ A FastAPI backend for a car rental platform. User authentication is fully implem
 ## Features
 
 - ✅ User registration and JWT-based authentication
-- ✅ Secure password hashing with Argon2 (pwdlib)
-- ✅ PostgreSQL persistence via SQLAlchemy 2.x
+- ✅ Secure password hashing with Argon2 (via `pwdlib`)
+- ✅ PostgreSQL persistence with SQLAlchemy 2.x
 - ✅ Schema-driven migrations with Alembic
 - ✅ Request/response validation with Pydantic v2
 - 🚧 Vehicle listings, bookings, and rental management (in progress)
@@ -78,7 +78,7 @@ Create a `.env` file in the project root with the following variables:
 | Variable                      | Description                     | Example                                                      |
 | ----------------------------- | ------------------------------- | ------------------------------------------------------------ |
 | `DATABASE_URL`                | PostgreSQL connection string    | `postgresql://diseuser:yourpassword@localhost:5432/dise_api` |
-| `SECRET_KEY`                  | Secret used to sign JWTs        | generated, see below                                         |
+| `SECRET_KEY`                  | Secret used to sign JWTs        | `3a7f...` (see below)                                        |
 | `ALGORITHM`                   | JWT signing algorithm           | `HS256`                                                      |
 | `ACCESS_TOKEN_EXPIRE_MINUTES` | Access token lifetime (minutes) | `30`                                                         |
 
@@ -122,19 +122,27 @@ alembic downgrade -1                         # roll back one step
 
 ## Running with Docker
 
-A `docker-compose.yml` is included for spinning up the API alongside a PostgreSQL instance:
+A `docker-compose.yml` is included to run the API alongside a PostgreSQL instance:
 
 ```bash
 docker compose up --build
 ```
 
-This builds the app image, starts PostgreSQL, and runs the API. Update the `.env` values (or the compose file's environment section) to match your local configuration before starting.
+This:
+
+- Builds the app image
+- Starts PostgreSQL
+- Runs the API with the configured environment
+
+Update the `.env` values (or the `environment` section in `docker-compose.yml`) to match your local configuration before starting.
 
 To stop and remove containers:
 
 ```bash
 docker compose down
 ```
+
+> If you run into permission issues on Linux, ensure the PostgreSQL data directory (if using a named volume) is owned by the correct UID, or use a fresh volume.
 
 ## Running in Production
 
@@ -145,7 +153,7 @@ uvicorn app.main:app --host 0.0.0.0 --port 8000 --workers 4
 For production deployments, also consider:
 
 - Running behind a reverse proxy (e.g. Nginx) with HTTPS termination
-- Setting `ACCESS_TOKEN_EXPIRE_MINUTES` and `SECRET_KEY` explicitly via environment/secret manager, not `.env`
+- Setting `ACCESS_TOKEN_EXPIRE_MINUTES` and `SECRET_KEY` via environment/secret manager, not `.env`
 - Enabling structured logging and a process manager (systemd, Docker, or similar)
 - Restricting CORS origins and rate-limiting sensitive endpoints (e.g. `/auth/login`)
 
@@ -168,18 +176,18 @@ More endpoints (vehicles, bookings, rentals) will be documented here as they're 
 
 ## Project Structure
 
-```
+```text
 dise-api/
 ├── alembic/           # Database migrations
 ├── app/
-│   ├── api/            # Route handlers (e.g. auth.py)
-│   ├── core/            # Config & settings
-│   ├── db/               # Database session setup
-│   ├── models/            # SQLAlchemy models
-│   ├── schemas/            # Pydantic request/response schemas
-│   ├── services/            # Business logic
-│   ├── utils/                # Shared helpers & enums
-│   └── main.py                # App entrypoint
+│   ├── api/           # Route handlers (e.g. auth.py)
+│   ├── core/          # Config & settings
+│   ├── db/            # Database session setup
+│   ├── models/        # SQLAlchemy models
+│   ├── schemas/       # Pydantic request/response schemas
+│   ├── services/      # Business logic
+│   ├── utils/         # Shared helpers & enums
+│   └── main.py        # App entrypoint
 ├── docker-compose.yml
 ├── alembic.ini
 ├── requirements.txt
@@ -198,7 +206,7 @@ To run with coverage:
 pytest --cov=app --cov-report=term-missing
 ```
 
-> Add a test suite under `tests/` as features are implemented. See [Roadmap](#roadmap) for planned coverage.
+Add a test suite under `tests/` as features are implemented. See [Roadmap](#roadmap) for planned coverage.
 
 ## Roadmap
 
