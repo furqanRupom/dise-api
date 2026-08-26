@@ -1,11 +1,16 @@
-# dise-api
+<p align="center">
+  <a href="./app/assets/logo.png"><img src="./app/assets/logo.png" alt="dise+ logo" width="140"></a>
+</p>
 
-A FastAPI backend for a car rental platform. User authentication is fully implemented; vehicle listings, bookings, and rental management are next.
+<h1 align="center">dise+</h1>
+<p align="center">A FastAPI backend for a platform-owned car rental service.</p>
 
-[![Python](https://img.shields.io/badge/python-3.12%2B-blue)](https://www.python.org/downloads/)
-[![FastAPI](https://img.shields.io/badge/framework-FastAPI-009688)](https://fastapi.tiangolo.com/)
-[![License](https://img.shields.io/badge/license-MIT-green)](LICENSE)
-[![Status](https://img.shields.io/badge/status-active--development-yellow)](.)
+<p align="center">
+  <a href="https://www.python.org/downloads/"><img src="https://img.shields.io/badge/python-3.12%2B-blue" alt="Python"></a>
+  <a href="https://fastapi.tiangolo.com/"><img src="https://img.shields.io/badge/framework-FastAPI-009688" alt="FastAPI"></a>
+  <a href="LICENSE"><img src="https://img.shields.io/badge/license-MIT-green" alt="License"></a>
+  <a href="."><img src="https://img.shields.io/badge/status-active--development-yellow" alt="Status"></a>
+</p>
 
 ## Table of Contents
 
@@ -27,22 +32,35 @@ A FastAPI backend for a car rental platform. User authentication is fully implem
 
 - ✅ User registration and JWT-based authentication
 - ✅ Secure password hashing with Argon2 (via `pwdlib`)
+- ✅ OAuth login support
+- ✅ Email delivery (OTP, forgot-password) with HTML templates
+- ✅ Redis-backed OTP and session/cache layer
+- ✅ Cloudinary integration for image uploads (avatars, vehicle images)
+- ✅ Location management (pickup/drop-off branches)
+- ✅ Vehicle category management
+- ✅ Coupon management
 - ✅ PostgreSQL persistence with SQLAlchemy 2.x
 - ✅ Schema-driven migrations with Alembic
 - ✅ Request/response validation with Pydantic v2
-- 🚧 Vehicle listings, bookings, and rental management (in progress)
+- 🚧 Vehicle listings & availability (in progress)
+- 🚧 Booking, payment, and rental lifecycle (in progress)
+- 🚧 Condition reports & maintenance blocks (models defined, endpoints pending)
+- 🚧 Notifications & audit logs (models defined, endpoints pending)
 
 ## Tech Stack
 
-| Layer      | Technology                      |
-| ---------- | ------------------------------- |
-| Framework  | FastAPI                         |
-| Language   | Python 3.12+                    |
-| Database   | PostgreSQL (via SQLAlchemy 2.x) |
-| Migrations | Alembic                         |
-| Validation | Pydantic v2                     |
-| Auth       | JWT + Argon2 (pwdlib)           |
-| Server     | Uvicorn                         |
+| Layer         | Technology                      |
+| ------------- | ------------------------------- |
+| Framework     | FastAPI                         |
+| Language      | Python 3.12+                    |
+| Database      | PostgreSQL (via SQLAlchemy 2.x) |
+| Migrations    | Alembic                         |
+| Validation    | Pydantic v2                     |
+| Auth          | JWT + Argon2 (pwdlib) + OAuth   |
+| Cache/Session | Redis                           |
+| Media Storage | Cloudinary                      |
+| Email         | SMTP client + HTML templates    |
+| Server        | Uvicorn                         |
 
 ## Quick Start
 
@@ -81,6 +99,12 @@ Create a `.env` file in the project root with the following variables:
 | `SECRET_KEY`                  | Secret used to sign JWTs        | `3a7f...` (see below)                                        |
 | `ALGORITHM`                   | JWT signing algorithm           | `HS256`                                                      |
 | `ACCESS_TOKEN_EXPIRE_MINUTES` | Access token lifetime (minutes) | `30`                                                         |
+| `REDIS_URL`                   | Redis connection string         | `redis://localhost:6379/0`                                   |
+| `CLOUDINARY_URL`              | Cloudinary connection string    | `cloudinary://<key>:<secret>@<cloud_name>`                   |
+| `MAIL_USERNAME`               | SMTP username                   | `noreply@dise.app`                                           |
+| `MAIL_PASSWORD`               | SMTP password / app password    | `********`                                                   |
+| `MAIL_FROM`                   | From address for outgoing email | `noreply@dise.app`                                           |
+| `MAIL_SERVER`                 | SMTP server host                | `smtp.gmail.com`                                             |
 
 Generate a secure secret key:
 
@@ -101,6 +125,12 @@ CREATE DATABASE dise_api OWNER diseuser;
 GRANT ALL PRIVILEGES ON DATABASE dise_api TO diseuser;
 ```
 
+`btree_gist` is required for the exclusion constraints used to prevent double-booking:
+
+```bash
+psql -U diseuser -d dise_api -f scripts/sql/btree_gist_setup.sql
+```
+
 Then apply migrations:
 
 ```bash
@@ -119,6 +149,12 @@ alembic downgrade -1                         # roll back one step
 ```
 
 </details>
+
+To load sample data for local development:
+
+```bash
+python scripts/seed_data.py
+```
 
 ## Running with Docker
 
@@ -153,7 +189,7 @@ uvicorn app.main:app --host 0.0.0.0 --port 8000 --workers 4
 For production deployments, also consider:
 
 - Running behind a reverse proxy (e.g. Nginx) with HTTPS termination
-- Setting `ACCESS_TOKEN_EXPIRE_MINUTES` and `SECRET_KEY` via environment/secret manager, not `.env`
+- Setting `SECRET_KEY`, `CLOUDINARY_URL`, and mail credentials via a secret manager, not `.env`
 - Enabling structured logging and a process manager (systemd, Docker, or similar)
 - Restricting CORS origins and rate-limiting sensitive endpoints (e.g. `/auth/login`)
 
@@ -167,12 +203,19 @@ Interactive docs are available once the server is running:
 
 ### Endpoints
 
-| Method | Endpoint         | Description                    | Auth Required |
-| ------ | ---------------- | ------------------------------ | ------------- |
-| `POST` | `/auth/register` | Create a new user account      | No            |
-| `POST` | `/auth/login`    | Authenticate and receive a JWT | No            |
+| Method | Endpoint              | Description                    | Auth Required |
+| ------ | --------------------- | ------------------------------ | ------------- |
+| `POST` | `/auth/register`      | Create a new user account      | No            |
+| `POST` | `/auth/login`         | Authenticate and receive a JWT | No            |
+| `GET`  | `/users/me`           | Get current user profile       | Yes           |
+| `GET`  | `/locations`          | List pickup/drop-off locations | No            |
+| `POST` | `/locations`          | Create a location              | Admin         |
+| `GET`  | `/vehicle-categories` | List vehicle categories        | No            |
+| `POST` | `/vehicle-categories` | Create a vehicle category      | Admin         |
+| `GET`  | `/coupons`            | List coupons                   | Admin         |
+| `POST` | `/coupons`            | Create a coupon                | Admin         |
 
-More endpoints (vehicles, bookings, rentals) will be documented here as they're implemented — see [Roadmap](#roadmap).
+More endpoints (vehicles, bookings, payments, condition reports) will be documented here as they're implemented — see [Roadmap](#roadmap).
 
 ## Project Structure
 
@@ -180,14 +223,19 @@ More endpoints (vehicles, bookings, rentals) will be documented here as they're 
 dise-api/
 ├── alembic/           # Database migrations
 ├── app/
-│   ├── api/           # Route handlers (e.g. auth.py)
-│   ├── core/          # Config & settings
-│   ├── db/            # Database session setup
-│   ├── models/        # SQLAlchemy models
-│   ├── schemas/       # Pydantic request/response schemas
-│   ├── services/      # Business logic
-│   ├── utils/         # Shared helpers & enums
-│   └── main.py        # App entrypoint
+│   ├── api/            # Route handlers (auth, user, location, coupon, vehicle_category)
+│   ├── assets/          # Static assets (logo, etc.)
+│   ├── core/            # Config, security, OAuth, mail, Cloudinary, RBAC
+│   ├── db/               # Database + Redis session setup
+│   ├── models/          # SQLAlchemy models
+│   ├── schemas/         # Pydantic request/response schemas
+│   ├── services/        # Business logic
+│   ├── templates/       # Email templates (OTP, forgot password)
+│   ├── utils/            # Shared helpers & enums
+│   └── main.py          # App entrypoint
+├── scripts/
+│   ├── seed_data.py     # Local dev seed data
+│   └── sql/               # Raw SQL setup (btree_gist, etc.)
 ├── docker-compose.yml
 ├── alembic.ini
 ├── requirements.txt
@@ -210,11 +258,17 @@ Add a test suite under `tests/` as features are implemented. See [Roadmap](#road
 
 ## Roadmap
 
-- [ ] Vehicle listing management (CRUD)
-- [ ] Booking and rental flows
-- [ ] Role-based access control (admin, staff, customer)
+- [x] User registration and authentication
+- [x] Location management
+- [x] Vehicle category management
+- [x] Coupon management
+- [ ] Vehicle listing management (CRUD) + availability engine
+- [ ] Booking creation, state machine, and cancellation
+- [ ] Payment capture, deposit holds, and refunds (Stripe)
+- [ ] Check-in/check-out and condition reports
+- [ ] Notification dispatch (email/SMS/push via Celery)
+- [ ] Role-based access control (admin, staff, support, customer)
 - [ ] Refresh token support
-- [ ] Expanded user profile support
 - [ ] Automated test suite with CI
 
 See open issues for the current priority list.
