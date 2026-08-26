@@ -13,7 +13,7 @@ class VehicleService:
     def __init__(self, db: Session):
         self.db = db
 
-    def get_vehicles(self):
+    def get_vehicles(self) -> list[Vehicle]:
         return (
             self.db.query(Vehicle)
             .filter(Vehicle.deleted_at.is_(None))
@@ -21,7 +21,7 @@ class VehicleService:
             .all()
         )
 
-    def get_vehicle(self, vehicle_id: uuid.UUID):
+    def get_vehicle(self, vehicle_id: uuid.UUID) -> Vehicle:
         vehicle = (
             self.db.query(Vehicle)
             .filter(
@@ -39,7 +39,8 @@ class VehicleService:
 
         return vehicle
 
-    def create_vehicle(self, payload: VehicleCreate):
+    def create_vehicle(self, payload: VehicleCreate) -> Vehicle:
+        # Check location
         location = (
             self.db.query(Location)
             .filter(
@@ -56,6 +57,7 @@ class VehicleService:
                 detail="Location not found",
             )
 
+        # Check vehicle category
         vehicle_category = (
             self.db.query(VehicleCategory)
             .filter(
@@ -72,21 +74,23 @@ class VehicleService:
                 detail="Vehicle category not found",
             )
 
-        owner = (
-            self.db.query(User)
-            .filter(
-                User.id == payload.owner_id,
-                User.deleted_at.is_(None),
-                User.is_active.is_(True),
+        # Check owner only when owner_id is provided
+        if payload.owner_id is not None:
+            owner = (
+                self.db.query(User)
+                .filter(
+                    User.id == payload.owner_id,
+                    User.deleted_at.is_(None),
+                    User.is_active.is_(True),
+                )
+                .first()
             )
-            .first()
-        )
 
-        if not owner:
-            raise HTTPException(
-                status_code=status.HTTP_404_NOT_FOUND,
-                detail="Owner not found",
-            )
+            if not owner:
+                raise HTTPException(
+                    status_code=status.HTTP_404_NOT_FOUND,
+                    detail="Owner not found",
+                )
 
         vehicle = Vehicle(**payload.model_dump())
 
@@ -107,7 +111,7 @@ class VehicleService:
         self,
         vehicle_id: uuid.UUID,
         payload: VehicleUpdate,
-    ):
+    ) -> Vehicle:
         vehicle = (
             self.db.query(Vehicle)
             .filter(
@@ -126,7 +130,64 @@ class VehicleService:
         update_data = payload.model_dump(exclude_unset=True)
 
         if not update_data:
-            return vehicle
+            raise HTTPException(
+                status_code=status.HTTP_400_BAD_REQUEST,
+                detail="No fields to update",
+            )
+
+        # Validate location if it is being changed
+        if "location_id" in update_data:
+            location = (
+                self.db.query(Location)
+                .filter(
+                    Location.id == update_data["location_id"],
+                    Location.deleted_at.is_(None),
+                    Location.is_active.is_(True),
+                )
+                .first()
+            )
+
+            if not location:
+                raise HTTPException(
+                    status_code=status.HTTP_404_NOT_FOUND,
+                    detail="Location not found",
+                )
+
+        # Validate category if it is being changed
+        if "category_id" in update_data:
+            vehicle_category = (
+                self.db.query(VehicleCategory)
+                .filter(
+                    VehicleCategory.id == update_data["category_id"],
+                    VehicleCategory.deleted_at.is_(None),
+                    VehicleCategory.is_active.is_(True),
+                )
+                .first()
+            )
+
+            if not vehicle_category:
+                raise HTTPException(
+                    status_code=status.HTTP_404_NOT_FOUND,
+                    detail="Vehicle category not found",
+                )
+
+        # Validate owner if it is being changed
+        if "owner_id" in update_data and update_data["owner_id"] is not None:
+            owner = (
+                self.db.query(User)
+                .filter(
+                    User.id == update_data["owner_id"],
+                    User.deleted_at.is_(None),
+                    User.is_active.is_(True),
+                )
+                .first()
+            )
+
+            if not owner:
+                raise HTTPException(
+                    status_code=status.HTTP_404_NOT_FOUND,
+                    detail="Owner not found",
+                )
 
         try:
             for field, value in update_data.items():
@@ -143,7 +204,7 @@ class VehicleService:
 
         return vehicle
 
-    def delete_vehicle(self, vehicle_id: uuid.UUID):
+    def delete_vehicle(self, vehicle_id: uuid.UUID) -> None:
         vehicle = (
             self.db.query(Vehicle)
             .filter(

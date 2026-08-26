@@ -1,7 +1,7 @@
 import uuid
 from typing import Annotated
 
-from fastapi import APIRouter, Depends
+from fastapi import APIRouter, Depends, Response, status
 from sqlalchemy.orm import Session
 
 from app.core.dependencies import (
@@ -10,6 +10,12 @@ from app.core.dependencies import (
 )
 from app.db import get_db
 from app.models import User
+from app.schemas.vehicle import (
+    VehicleCreate,
+    VehicleResponse,
+    VehicleUpdate,
+)
+from app.services.vehicle_service import VehicleService
 
 router = APIRouter(
     prefix="/vehicles",
@@ -17,44 +23,77 @@ router = APIRouter(
 )
 
 
-@router.get("/")
-async def get_vehicles(
+@router.get(
+    "/",
+    response_model=list[VehicleResponse],
+)
+def get_vehicles(
     db: Annotated[Session, Depends(get_db)],
     current_user: Annotated[User, Depends(get_current_active_user)],
 ):
-    return {"message": "vehicles"}
+    vehicle_service = VehicleService(db)
+
+    return vehicle_service.get_vehicles()
 
 
-@router.post("/")
-async def create_vehicle(
+@router.post(
+    "/",
+    response_model=VehicleResponse,
+    status_code=status.HTTP_201_CREATED,
+)
+def create_vehicle(
     db: Annotated[Session, Depends(get_db)],
     current_user: Annotated[User, Depends(require_admin_or_staff)],
+    payload: VehicleCreate,
 ):
-    return {"message": "vehicle created"}
+    vehicle_service = VehicleService(db)
+
+    return vehicle_service.create_vehicle(payload)
 
 
-@router.get("/{vehicle_id}")
-async def get_vehicle(
+@router.get(
+    "/{vehicle_id}",
+    response_model=VehicleResponse,
+)
+def get_vehicle(
     vehicle_id: uuid.UUID,
     db: Annotated[Session, Depends(get_db)],
     current_user: Annotated[User, Depends(get_current_active_user)],
 ):
-    return {"message": f"vehicle {vehicle_id}"}
+    vehicle_service = VehicleService(db)
+
+    return vehicle_service.get_vehicle(vehicle_id)
 
 
-@router.put("/{vehicle_id}")
-async def update_vehicle(
+@router.put(
+    "/{vehicle_id}",
+    response_model=VehicleResponse,
+)
+def update_vehicle(
+    vehicle_id: uuid.UUID,
+    db: Annotated[Session, Depends(get_db)],
+    current_user: Annotated[User, Depends(require_admin_or_staff)],
+    payload: VehicleUpdate,
+):
+    vehicle_service = VehicleService(db)
+
+    return vehicle_service.update_vehicle(
+        vehicle_id,
+        payload,
+    )
+
+
+@router.delete(
+    "/{vehicle_id}",
+    status_code=status.HTTP_204_NO_CONTENT,
+)
+def delete_vehicle(
     vehicle_id: uuid.UUID,
     db: Annotated[Session, Depends(get_db)],
     current_user: Annotated[User, Depends(require_admin_or_staff)],
 ):
-    return {"message": f"vehicle {vehicle_id} updated"}
+    vehicle_service = VehicleService(db)
 
+    vehicle_service.delete_vehicle(vehicle_id)
 
-@router.delete("/{vehicle_id}")
-async def delete_vehicle(
-    vehicle_id: uuid.UUID,
-    db: Annotated[Session, Depends(get_db)],
-    current_user: Annotated[User, Depends(require_admin_or_staff)],
-):
-    return {"message": f"vehicle {vehicle_id} deleted"}
+    return Response(status_code=status.HTTP_204_NO_CONTENT)
