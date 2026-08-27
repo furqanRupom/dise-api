@@ -1,5 +1,5 @@
 import uuid
-from typing import Annotated
+from typing import Annotated, Any
 
 from fastapi import APIRouter, Depends, Response, status
 from sqlalchemy.orm import Session
@@ -97,3 +97,15 @@ def delete_vehicle(
     vehicle_service.delete_vehicle(vehicle_id)
 
     return Response(status_code=status.HTTP_204_NO_CONTENT)
+
+
+@router.put(
+    "/{vehicle_id}/image-upload",
+)
+async def update_vehicle_image(
+    vehicle_id: uuid.UUID,
+    db: Annotated[Session, Depends(get_db)],
+    current_user: Annotated[User, Depends(require_admin_or_staff)],
+    payload: Any,
+):
+    vehicle_service = VehicleService(db)
