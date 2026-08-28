@@ -3,9 +3,10 @@ from datetime import datetime, timezone
 
 from fastapi import HTTPException, UploadFile, status
 from sqlalchemy import update
+from sqlalchemy.exc import SQLAlchemyError
 from sqlalchemy.orm import Session
 
-from app.core.cloudinary import upload_image
+from app.core.cloudinary import delete_image, upload_image
 from app.core.security import hash_password, verify_password
 from app.models import User
 from app.schemas.user import ChangePassword, UserUpdate
@@ -36,15 +37,38 @@ class UserService:
         self.db.commit()
         return updated_user
 
-    async def update_avatar(self, user_id: uuid.UUID, file: UploadFile):
-        user = self.db.query(User).filter_by(id=user_id).first()
+    async def update_avatar(
+        self,
+        user_id: uuid.UUID,
+        file: UploadFile,
+    ) -> User:
+        user = self.db.query(User).filter(User.id == user_id).first()
+
         if not user:
             raise HTTPException(
-                status_code=status.HTTP_404_NOT_FOUND, detail="User not found"
+                status_code=status.HTTP_404_NOT_FOUND,
+                detail="User not found",
             )
-        avatar_url = upload_image(file)
-        user.avatar_url = avatar_url
-        self.db.commit()
+
+        # Upload new image to Cloudinary
+        result = await upload_image(file)
+
+        # Update user
+        user.avatar_url = result["url"]
+
+        try:
+            self.db.commit()
+            self.db.refresh(user)
+
+        except SQLAlchemyError:
+            self.db.rollback()
+            delete_image(result["url"])
+
+            raise HTTPException(
+                status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
+                detail="Failed to update avatar",
+            )
+
         return user
 
     async def change_password(self, user_id: uuid.UUID, payload: ChangePassword):
