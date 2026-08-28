@@ -14,43 +14,75 @@ cloudinary.config(
     secure=True,
 )
 
-ALLOWED_TYPES = ["image/jpeg", "image/png", "image/webp"]
+ALLOWED_TYPES = {
+    "image/jpeg",
+    "image/png",
+    "image/webp",
+}
 
 MAX_FILE_SIZE = 5 * 1024 * 1024
 
 
-def upload_image(file: UploadFile) -> str:
+async def upload_image(file: UploadFile) -> dict:
+    # Validate MIME type
     if file.content_type not in ALLOWED_TYPES:
         raise HTTPException(
             status_code=status.HTTP_400_BAD_REQUEST,
             detail="Only JPEG, PNG, and WebP images are allowed",
         )
-    contents = file.file.read()
 
+    # Read file
+    contents = await file.read()
+
+    # Validate file size
     if len(contents) > MAX_FILE_SIZE:
         raise HTTPException(
             status_code=status.HTTP_400_BAD_REQUEST,
             detail="Maximum file size is 5MB.",
         )
 
+    # Validate that the file is actually an image
     try:
         image = Image.open(BytesIO(contents))
-    except UnidentifiedImageError:
+        image.verify()
+    except (UnidentifiedImageError, OSError):
         raise HTTPException(
             status_code=status.HTTP_400_BAD_REQUEST,
             detail="Invalid image file",
         )
 
+    # Re-open because verify() invalidates the image object
+    image = Image.open(BytesIO(contents))
+
+    # Convert to RGB
     image = image.convert("RGB")
+
+    # Resize
     image.thumbnail((500, 500))
+
+    # Convert to JPEG
     buffer = BytesIO()
-    image.save(buffer, format="JPEG", qualify=85, optimize=True)
+
+    image.save(
+        buffer,
+        format="JPEG",
+        quality=85,
+        optimize=True,
+    )
+
     buffer.seek(0)
+
+    # Upload to Cloudinary
     result = cloudinary.uploader.upload(
         buffer,
         folder=settings.CLOUDINARY_FOLDER,
+        resource_type="image",
     )
-    return result["url"]
+
+    return {
+        "url": result["secure_url"],
+        "public_id": result["public_id"],
+    }
 
 
 def delete_image(url):

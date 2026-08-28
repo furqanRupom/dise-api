@@ -1,11 +1,13 @@
 import uuid
 from datetime import datetime, timezone
 
-from fastapi import HTTPException, status
+from fastapi import HTTPException, UploadFile, status
+from sqlalchemy import select
 from sqlalchemy.exc import SQLAlchemyError
 from sqlalchemy.orm import Session
 
-from app.models import Location, User, Vehicle, VehicleCategory
+from app.core.cloudinary import delete_image, upload_image
+from app.models import Location, User, Vehicle, VehicleCategory, VehicleImage
 from app.schemas.vehicle import VehicleCreate, VehicleUpdate
 
 
@@ -228,4 +230,53 @@ class VehicleService:
             raise HTTPException(
                 status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
                 detail="Failed to delete vehicle",
+            )
+
+    async def update_vehicle_image(
+        self, vehicle_id: uuid.UUID, file: UploadFile
+    ) -> VehicleImage:
+        vehicle = (
+            self.db.query(Vehicle)
+            .filter(
+                Vehicle.id == vehicle_id,
+                Vehicle.deleted_at.is_(None),
+            )
+            .first()
+        )
+
+        if not vehicle:
+            raise HTTPException(
+                status_code=status.HTTP_404_NOT_FOUND,
+                detail="Vehicle not found",
+            )
+
+        result = await upload_image(file)
+        # Get the last image sort order
+        last_image = self.db.scalar(
+            select(VehicleImage)
+            .where(
+                VehicleImage.vehicle_id == vehicle_id,
+            )
+            .order_by(VehicleImage.sort_order.desc())
+        )
+
+        # Calculate the sort order for the new image
+        sort_order = last_image.sort_order + 1 if last_image else 0
+        vehicle_image = VehicleImage(
+            vehicle_id=vehicle_id,
+            imgage_url=result["url"],
+            sort_order=sort_order,
+        )
+
+        try:
+            self.db.add(vehicle_image)
+            self.db.commit()
+            self.db.refresh(vehicle_image)
+            return vehicle_image
+        except SQLAlchemyError:
+            self.db.rollback()
+            delete_image(result["url"])
+            raise HTTPException(
+                status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
+                detail="Failed to update vehicle image",
             )
