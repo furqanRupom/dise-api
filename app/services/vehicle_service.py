@@ -264,7 +264,7 @@ class VehicleService:
         sort_order = last_image.sort_order + 1 if last_image else 0
         vehicle_image = VehicleImage(
             vehicle_id=vehicle_id,
-            imgage_url=result["url"],
+            image_url=result["url"],
             sort_order=sort_order,
         )
 
