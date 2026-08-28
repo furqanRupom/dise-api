@@ -3,32 +3,7 @@ from datetime import datetime
 
 from pydantic import BaseModel, ConfigDict, Field
 
-
-# ---------- VehicleImage ----------
-class VehicleImageCreate(BaseModel):
-    image_url: str = Field(
-        ...,
-        max_length=500,
-        description="URL of the vehicle image",
-    )
-    sort_order: int = Field(
-        default=0,
-        ge=0,
-        description="Display order of the image",
-    )
-
-
-class VehicleImageUpdate(BaseModel):
-    image_url: str | None = Field(
-        default=None,
-        max_length=500,
-        description="URL of the vehicle image",
-    )
-    sort_order: int | None = Field(
-        default=None,
-        ge=0,
-        description="Display order of the image",
-    )
+from app.schemas.vehicle_category import VehicleCategoryResponse
 
 
 class VehicleImageResponse(BaseModel):
@@ -141,7 +116,7 @@ class VehicleResponse(BaseModel):
     deleted_at: datetime | None
 
     # Optional nested responses (if you eager-load relationships)
-    # category: VehicleCategoryResponse | None = None
-    # images: list[VehicleImageResponse] = []
+    category: VehicleCategoryResponse | None = None
+    images: list[VehicleImageResponse] = []
 
     model_config = ConfigDict(from_attributes=True)
