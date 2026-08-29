@@ -106,7 +106,7 @@ async def update_vehicle_image(
     vehicle_id: uuid.UUID,
     db: Annotated[Session, Depends(get_db)],
     current_user: Annotated[User, Depends(require_admin_or_staff)],
-    file: UploadFile = File(...),
+    file: Annotated[UploadFile, File(...)],
 ):
     vehicle_service = VehicleService(db)
     await vehicle_service.update_vehicle_image(vehicle_id, file)
