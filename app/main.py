@@ -42,7 +42,7 @@ app = FastAPI(
     description=(
         "Backend API for **Dise**, a car rental platform — vehicle catalog, "
         "bookings, payments, and admin/fleet management.\n\n"
-        "Most endpoints require a Bearer JWT. Login via `POST /auth/login`, "
+        "Most endpoints require a cookie JWT. Login via `POST /auth/login`, "
         "then click **Authorize** above."
     ),
     version="1.0.0",
