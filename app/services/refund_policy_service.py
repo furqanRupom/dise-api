@@ -1,5 +1,6 @@
 import uuid
 from datetime import datetime, timezone
+from decimal import Decimal
 
 from fastapi import HTTPException, status
 from sqlalchemy import select
@@ -16,7 +17,7 @@ class RefundPolicyService:
     def list_tiers(self, include_inactive: bool = False) -> list[RefundPolicyTier]:
         """List all refund policy tiers, optionally including inactive ones."""
         stmt = select(RefundPolicyTier).order_by(
-            RefundPolicyTier.hours_before_pickup.desc
+            RefundPolicyTier.hours_before_pickup.desc()
         )
         if not include_inactive:
             stmt = stmt.where(RefundPolicyTier.is_active.is_(True))
@@ -79,7 +80,8 @@ class RefundPolicyService:
             raise HTTPException(
                 status_code=status.HTTP_404_NOT_FOUND, detail="Refund tier not found"
             )
-        for key, value in payload.model_dump().items():
+        update_payload = payload.model_dump(exclude_unset=True)
+        for key, value in update_payload.items():
             setattr(refund_tier, key, value)
         self.db.commit()
         self.db.refresh(refund_tier)
@@ -103,3 +105,17 @@ class RefundPolicyService:
         refund_tier.is_active = False
         refund_tier.deleted_at = datetime.now(timezone.utc)
         self.db.commit()
+
+    async def compute_refund_percentage(
+        self, hours_until_pickup: int
+    ) -> tuple[Decimal, uuid.UUID | None]:
+        """
+        Returns the most generous applicable refund percentage.
+        Tiers are step thresholds: the highest hours_before_pickup value that
+        the actual hours_until_pickup still satisfies wins.
+        """
+        tiers = self.list_tiers(include_inactive=False)
+        for tier in tiers:  # already sorted desc
+            if hours_until_pickup >= tier.hours_before_pickup:
+                return Decimal(tier.refund_percentage), tier.id
+        return Decimal("0.00"), None
