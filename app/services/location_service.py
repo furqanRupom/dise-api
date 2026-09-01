@@ -86,14 +86,13 @@ class LocationService:
         )
         return location
 
-    """
-    Deletes a location by its ID.
-    """
-
     def delete_location(
         self,
         location_id: uuid.UUID,
     ):
+        """
+        Deletes a location by its ID.
+        """
         location = (
             self.db.query(Location)
             .filter(Location.id == location_id, Location.deleted_at.is_(None))
