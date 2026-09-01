@@ -40,23 +40,21 @@ async def lifespan(app: FastAPI):
 app = FastAPI(
     title="Dise API",
     description=(
-        "Backend API for the Dise project. "
-        "Provides authentication, user management, and other core services."
+        "Backend API for **Dise**, a car rental platform — vehicle catalog, "
+        "bookings, payments, and admin/fleet management.\n\n"
+        "Most endpoints require a Bearer JWT. Login via `POST /auth/login`, "
+        "then click **Authorize** above."
     ),
     version="1.0.0",
     contact={
-        "name": "Dise Team",
-        "url": "https://your-domain.com",
-        "email": "support@your-domain.com",
-    },
-    license_info={
-        "name": "MIT",
-        "url": "https://opensource.org/licenses/MIT",
+        "name": "Dise Engineering Team",
+        "email": "engineering@dise.app",
     },
     docs_url="/docs",
     redoc_url="/redoc",
     openapi_url="/openapi.json",
     lifespan=lifespan,
+    # only debug for development
     debug=True,
 )
 
