@@ -9,7 +9,6 @@ from sqlalchemy.orm import Session
 from app.core.dependencies import require_admin
 from app.db import get_db
 from app.models import User
-from app.models.refund_policy import RefundPolicyTier
 from app.schemas.refund_policy import (
     RefundPolicyTierCreate,
     RefundPolicyTierOut,
@@ -25,7 +24,7 @@ router = APIRouter(
 )
 
 
-@router.get("/", response_model=list[RefundPolicyTier])
+@router.get("/", response_model=list[RefundPolicyTierOut])
 async def get_refund_policy(
     db: Annotated[Session, Depends(get_db)],
     current_user: Annotated[User, Depends(require_admin)],
