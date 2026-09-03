@@ -4,4 +4,8 @@ from fastapi import APIRouter
 
 router = APIRouter(prefix="/v1/booking", tags=["booking"])
 
-""" we will start with staff/admin first APIs then we gradually moved to customer """
+"""
+we will start with staff/admin first APIs then we gradually moved to customer
+TODO : we are going to work on booking now
+
+"""
