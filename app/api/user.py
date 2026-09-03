@@ -1,12 +1,19 @@
+import uuid
 from typing import Annotated
 
 from fastapi import APIRouter, Depends, File, UploadFile
 from sqlalchemy.orm import Session
 
-from app.core.dependencies import get_current_active_user
+from app.core.dependencies import get_current_active_user, require_admin
 from app.db import get_db
 from app.models import User
-from app.schemas.user import UserAvatarUpdate, UserUpdate
+from app.schemas.user import (
+    LicenseDecisionRequest,
+    LicenseStatusResponse,
+    LicenseSubmitRequest,
+    UserAvatarUpdate,
+    UserUpdate,
+)
 from app.services.user_service import UserService
 
 router = APIRouter(
@@ -62,3 +69,33 @@ async def delete_account(
     return await user_service.delete_account(
         current_user.id,
     )
+
+
+@router.post("/me/license", response_model=None)
+async def submit_my_license(
+    db: Annotated[Session, Depends(get_db)],
+    current_user: Annotated[User, Depends(get_current_active_user)],
+    payload: LicenseSubmitRequest,
+    file: Annotated[UploadFile, File(...)],
+):
+    user_service = UserService(db)
+    return await user_service.submit_license(current_user.id, payload, file)
+
+
+@router.get("/admin/licenses", response_model=list[LicenseStatusResponse])
+async def list_licenses(
+    db: Annotated[Session, Depends(get_db)],
+    current_user: Annotated[User, Depends(require_admin)],
+):
+    user_service = UserService(db)
+    return await user_service.list_pending_licences()
+
+
+@router.put("/admin/license/{user_id}", response_model=None)
+async def decide_license(
+    db: Annotated[Session, Depends(get_db)],
+    current_user: Annotated[User, Depends(require_admin)],
+    payload: LicenseDecisionRequest,
+    user_id: uuid.UUID,
+):
+    pass

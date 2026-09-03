@@ -2,14 +2,14 @@ import uuid
 from datetime import datetime, timezone
 
 from fastapi import HTTPException, UploadFile, status
-from sqlalchemy import update
+from sqlalchemy import select, update
 from sqlalchemy.exc import SQLAlchemyError
 from sqlalchemy.orm import Session
 
 from app.core.cloudinary import delete_image, upload_image
 from app.core.security import hash_password, verify_password
-from app.models import User
-from app.schemas.user import ChangePassword, UserUpdate
+from app.models import LicenseStatus, User
+from app.schemas.user import ChangePassword, LicenseSubmitRequest, UserUpdate
 
 
 class UserService:
@@ -101,3 +101,63 @@ class UserService:
             )
         user.deleted_at = datetime.now(timezone.utc)
         self.db.commit()
+
+    async def submit_license(
+        self,
+        user_id: uuid.UUID,
+        payload: LicenseSubmitRequest,
+        license_document: UploadFile,
+    ):
+        try:
+            user = self.db.scalar(
+                select(User).where(
+                    User.id == user_id,
+                    User.is_active.is_(True),
+                    User.deleted_at.is_(None),
+                )
+            )
+
+            if not user:
+                raise HTTPException(
+                    status_code=status.HTTP_404_NOT_FOUND,
+                    detail="User not found",
+                )
+
+            user.date_of_birth = payload.date_of_birth
+            user.license_number = payload.license_number
+
+            license_doc = await upload_image(license_document)
+
+            user.license_document_url = license_doc["url"]
+            user.license_status = LicenseStatus.pending
+
+            self.db.commit()
+            self.db.refresh(user)
+
+            return user
+
+        except HTTPException:
+            raise
+
+        except Exception as e:
+            self.db.rollback()
+            raise HTTPException(
+                status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
+                detail="Failed to submit license",
+            ) from e
+
+    async def list_pending_licences(self):
+        pending_license_users = self.db.scalars(
+            select(User).where(
+                User.license_status == LicenseStatus.pending,
+                User.deleted_at.is_(None),
+                User.is_active.is_(True),
+            )
+        ).all()
+        return pending_license_users
+
+    async def decide_licenses(self):
+        """
+        TODO :
+          decides licenses : Approval or Rejection by admin and we will notify user by throwing with celery works
+        """
