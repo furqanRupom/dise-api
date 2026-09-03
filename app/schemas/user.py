@@ -1,4 +1,5 @@
 from datetime import date
+from typing import Literal
 
 from pydantic import BaseModel, EmailStr, Field
 
@@ -90,3 +91,22 @@ class ChangePassword(BaseModel):
         min_length=8,
         max_length=128,
     )
+
+
+class LicenseSubmitRequest(BaseModel):
+    license_number: str
+    date_of_birth: date
+
+
+class LicenseStatusResponse(BaseModel):
+    license_number: str | None
+    license_document_url: str | None
+    license_status: LicenseStatus  # your existing enum
+    rejection_reason: str | None = None
+
+
+class LicenseDecisionRequest(BaseModel):
+    decision: Literal[
+        LicenseStatus.approved, LicenseStatus.pending, LicenseStatus.rejected
+    ]
+    reason: str | None = None
