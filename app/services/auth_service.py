@@ -148,6 +148,7 @@ class AuthService:
             )
 
         user.is_verified = True
+        user.is_active = True
         self.db.commit()
         return True
 

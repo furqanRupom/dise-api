@@ -1,4 +1,5 @@
 import uuid
+from datetime import date
 from typing import Annotated
 
 from fastapi import APIRouter, Depends, File, UploadFile
@@ -75,9 +76,13 @@ async def delete_account(
 async def submit_my_license(
     db: Annotated[Session, Depends(get_db)],
     current_user: Annotated[User, Depends(get_current_active_user)],
-    payload: LicenseSubmitRequest,
+    license_number: Annotated[str, File()],
+    date_of_birth: Annotated[date, File()],
     file: Annotated[UploadFile, File(...)],
 ):
+    payload = LicenseSubmitRequest(
+        license_number=license_number, date_of_birth=date_of_birth
+    )
     user_service = UserService(db)
     return await user_service.submit_license(current_user.id, payload, file)
 

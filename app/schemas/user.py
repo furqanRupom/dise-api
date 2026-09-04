@@ -1,3 +1,4 @@
+import uuid
 from datetime import date
 from typing import Literal
 
@@ -99,6 +100,7 @@ class LicenseSubmitRequest(BaseModel):
 
 
 class LicenseStatusResponse(BaseModel):
+    id: uuid.UUID
     license_number: str | None
     license_document_url: str | None
     license_status: LicenseStatus  # your existing enum
