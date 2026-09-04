@@ -9,7 +9,12 @@ from sqlalchemy.orm import Session
 from app.core.cloudinary import delete_image, upload_image
 from app.core.security import hash_password, verify_password
 from app.models import LicenseStatus, User
-from app.schemas.user import ChangePassword, LicenseSubmitRequest, UserUpdate
+from app.schemas.user import (
+    ChangePassword,
+    LicenseDecisionRequest,
+    LicenseSubmitRequest,
+    UserUpdate,
+)
 
 
 class UserService:
@@ -156,8 +161,31 @@ class UserService:
         ).all()
         return pending_license_users
 
-    async def decide_licenses(self):
-        """
-        TODO :
-          decides licenses : Approval or Rejection by admin and we will notify user by throwing with celery works
-        """
+    async def decide_licenses(
+        self, user_id: uuid.UUID, payload: LicenseDecisionRequest
+    ):
+
+        user = self.db.scalar(
+            select(User).where(
+                User.license_status == LicenseStatus.pending,
+                User.deleted_at.is_(None),
+                User.is_active.is_(True),
+            )
+        )
+        if not user:
+            raise HTTPException(
+                status_code=status.HTTP_400_BAD_REQUEST,
+                detail="User not found or inactive",
+            )
+
+        if user.license_status != LicenseStatus.pending:
+            raise HTTPException(
+                status_code=status.HTTP_400_BAD_REQUEST,
+                detail="License decision has already been processed",
+            )
+
+        user.license_status = payload.decision
+
+        self.db.commit()
+        self.db.refresh(User)
+        # CELERY NOTIFICACTIONS

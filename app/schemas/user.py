@@ -3,6 +3,7 @@ from datetime import date
 from typing import Literal
 
 from pydantic import BaseModel, EmailStr, Field
+from sqlalchemy import Enum
 
 from app.models.enums import LicenseStatus, UserRole
 
@@ -103,12 +104,10 @@ class LicenseStatusResponse(BaseModel):
     id: uuid.UUID
     license_number: str | None
     license_document_url: str | None
-    license_status: LicenseStatus  # your existing enum
+    license_status: LicenseStatus
     rejection_reason: str | None = None
 
 
 class LicenseDecisionRequest(BaseModel):
-    decision: Literal[
-        LicenseStatus.approved, LicenseStatus.pending, LicenseStatus.rejected
-    ]
+    decision: LicenseStatus
     reason: str | None = None
