@@ -21,9 +21,13 @@ Authlib>=1.7.2
 argon2-cffi>=25.1.0
 pwdlib>=0.3.0
 
-# Redis
-redis>=8.1.0
-aioredis>=2.0.1                 # deprecated upstream — consider migrating to redis-py's native asyncio support
+# Redis & Task Queue
+redis>=5.0.0                    # modern redis-py includes native asyncio support
+celery>=5.4.0                   # background task worker
+
+# Media & File Processing
+cloudinary>=1.41.0              # Cloudinary SDK for cloud image/video management
+Pillow>=10.4.0                  # Python Imaging Library (PIL) for image handling
 
 # Email
 aiosmtplib>=5.1.2
