@@ -15,6 +15,9 @@ from app.schemas.user import (
     LicenseSubmitRequest,
     UserUpdate,
 )
+from app.tasks.notifications import (
+    send_license_decision_mail,
+)
 
 
 class UserService:
@@ -187,5 +190,11 @@ class UserService:
         user.license_status = payload.decision
 
         self.db.commit()
-        self.db.refresh(User)
-        # CELERY NOTIFICACTIONS
+        self.db.refresh(user)
+        # Dispatch background email notification
+        send_license_decision_mail.delay(
+            user_email=user.email,
+            user_name=user.name,
+            status=payload.decision,
+            reason=payload.reason,
+        )

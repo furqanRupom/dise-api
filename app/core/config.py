@@ -33,11 +33,11 @@ class Settings(BaseSettings):
     REDIS_PORT: int = 6379
     REDIS_DB: int = 0
     REDIS_PASSWORD: str | None = None
-    REDIS_URL: str | None = None  # optional, useful with Doc
+    REDIS_URL: str | None = "redis://localhost:6379/0"  # optional, useful with Doc
 
     # Email
     MAIL_USERNAME: str = ""
-    MAIL_PASSWORD: str = ""
+    MAIL_PASSWORD: str = "ddddd"
     MAIL_FROM: str = "dise@dise.com"
     MAIL_PORT: int = 587
     MAIL_SERVER: str = "smtp.gmail.com"

@@ -103,4 +103,5 @@ async def decide_license(
     payload: LicenseDecisionRequest,
     user_id: uuid.UUID,
 ):
-    pass
+    user_service = UserService(db)
+    return await user_service.decide_licenses(user_id, payload)

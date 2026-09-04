@@ -1,20 +1,15 @@
-from redis.asyncio import ConnectionPool, Redis
+import redis.asyncio as redis
 
 from app.core.config import settings
 
-pool = ConnectionPool(
-    host=settings.REDIS_HOST,
-    port=settings.REDIS_PORT,
-    db=settings.REDIS_DB,
-    password=settings.REDIS_PASSWORD,
+# redis.from_url automatically creates and manages an underlying connection pool
+redis_client = redis.from_url(
+    settings.REDIS_URL,
     decode_responses=True,
     max_connections=20,
 )
 
-# Global Redis Client
-redis_client = Redis(connection_pool=pool)
 
-
-async def get_redis() -> Redis:
+async def get_redis() -> redis.Redis:
     """Dependency For FastAPI"""
     return redis_client
