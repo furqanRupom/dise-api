@@ -22,31 +22,30 @@
 - [Running Background Tasks (Celery)](#running-background-tasks-celery)
 - [Running with Docker](#running-with-docker)
 - [Running in Production](#running-in-production)
-- [API Reference](#api-reference)
+- [API Documentation](#api-documentation)
 - [Project Structure](#project-structure)
 - [Testing](#testing)
-- [Roadmap](#roadmap)
 - [Contributing](#contributing)
 - [License](#license)
 
 ## Features
 
-- ✅ User registration and JWT-based authentication
-- ✅ Secure password hashing with Argon2 (via `pwdlib`)
-- ✅ OAuth login support
-- ✅ Asynchronous email delivery (OTP, forgot-password, license decisions) via Celery
-- ✅ Redis-backed OTP, queue broker, and session/cache layer
-- ✅ Cloudinary integration for image uploads (avatars, vehicle images)
-- ✅ Location management (pickup/drop-off branches)
-- ✅ Vehicle category management
-- ✅ Coupon management
-- ✅ PostgreSQL persistence with SQLAlchemy 2.x
-- ✅ Schema-driven migrations with Alembic
-- ✅ Request/response validation with Pydantic v2
-- 🚧 Vehicle listings & availability (in progress)
-- 🚧 Booking, payment, and rental lifecycle (in progress)
-- 🚧 Condition reports & maintenance blocks (models defined, endpoints pending)
-- 🚧 Notifications & audit logs (models defined, endpoints pending)
+- User registration and JWT-based authentication
+- Secure password hashing with Argon2 (via `pwdlib`)
+- OAuth login support
+- Asynchronous email delivery (OTP, forgot-password, license decisions) via Celery
+- Redis-backed OTP, queue broker, and session/cache layer
+- Cloudinary integration for image uploads (avatars, vehicle images)
+- Location management (pickup/drop-off branches)
+- Vehicle category management
+- Coupon management
+- Vehicle listings & availability
+- Booking, payment, and rental lifecycle management
+- Condition reports & maintenance blocks
+- Notifications & audit logs
+- PostgreSQL persistence with SQLAlchemy 2.x
+- Schema-driven migrations with Alembic
+- Request/response validation with Pydantic v2
 
 ## Tech Stack
 
@@ -228,27 +227,13 @@ For production deployments, also consider:
 - Enabling structured logging and a process manager (systemd, Docker, or similar)
 - Restricting CORS origins and rate-limiting sensitive endpoints (e.g. `/auth/login`)
 
-## API Reference
+## API Documentation
 
 Interactive docs are available once the server is running:
 
 - Swagger UI — `http://127.0.0.1:8000/docs`
 - ReDoc — `http://127.0.0.1:8000/redoc`
 - OpenAPI schema — `http://127.0.0.1:8000/openapi.json`
-
-### Endpoints
-
-| Method | Endpoint              | Description                    | Auth Required |
-| ------ | --------------------- | ------------------------------ | ------------- |
-| `POST` | `/auth/register`      | Create a new user account      | No            |
-| `POST` | `/auth/login`         | Authenticate and receive a JWT | No            |
-| `GET`  | `/users/me`           | Get current user profile       | Yes           |
-| `GET`  | `/locations`          | List pickup/drop-off locations | No            |
-| `POST` | `/locations`          | Create a location              | Admin         |
-| `GET`  | `/vehicle-categories` | List vehicle categories        | No            |
-| `POST` | `/vehicle-categories` | Create a vehicle category      | Admin         |
-| `GET`  | `/coupons`            | List coupons                   | Admin         |
-| `POST` | `/coupons`            | Create a coupon                | Admin         |
 
 ## Project Structure
 
@@ -289,21 +274,6 @@ To run with coverage:
 pytest --cov=app --cov-report=term-missing
 
 ```
-
-## Roadmap
-
-- [x] User registration and authentication
-- [x] Location management
-- [x] Vehicle category management
-- [x] Coupon management
-- [x] Celery background task processing
-- [ ] Vehicle listing management (CRUD) + availability engine
-- [ ] Booking creation, state machine, and cancellation
-- [ ] Payment capture, deposit holds, and refunds (Stripe)
-- [ ] Check-in/check-out and condition reports
-- [ ] Role-based access control (admin, staff, support, customer)
-- [ ] Refresh token support
-- [ ] Automated test suite with CI
 
 ## Contributing
 
