@@ -83,17 +83,56 @@ celery -A app.core.celery.celery_app worker --loglevel=info
 
 ---
 
+## Alembic Commands
+
+```bash
+# Generate a new migration after model changes
+alembic revision --autogenerate -m "describe your change"
+
+# Apply all pending migrations
+alembic upgrade head
+
+# Apply migrations up to a specific revision
+alembic upgrade <revision_id>
+
+# Roll back the last migration
+alembic downgrade -1
+
+# Roll back to a specific revision
+alembic downgrade <revision_id>
+
+# Roll back all migrations
+alembic downgrade base
+
+# Show current migration version applied to the database
+alembic current
+
+# Show full migration history
+alembic history --verbose
+
+# Show pending migrations (not yet applied)
+alembic history --indicate-current
+
+# Create a new empty migration (manual edits)
+alembic revision -m "describe your change"
+
+# Show SQL that would be run without executing it
+alembic upgrade head --sql
+```
+
+---
+
 ## Test Accounts
 
 When populated via `seed_data.py`, use password **`Password123!`**:
 
-| Role | Email |
-| :--- | :--- |
-| **Admin** | `admin@example.com` |
-| **Support** | `support@example.com` |
-| **Fleet Staff** | `fleet@example.com` |
+| Role                            | Email                   |
+| :------------------------------ | :---------------------- |
+| **Admin**                       | `admin@example.com`     |
+| **Support**                     | `support@example.com`   |
+| **Fleet Staff**                 | `fleet@example.com`     |
 | **Customer (Approved License)** | `customer1@example.com` |
-| **Customer (Pending License)** | `customer2@example.com` |
+| **Customer (Pending License)**  | `customer2@example.com` |
 
 ---
 
