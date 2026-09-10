@@ -170,6 +170,7 @@ class UserService:
 
         user = self.db.scalar(
             select(User).where(
+                User.id == user_id,
                 User.license_status == LicenseStatus.pending,
                 User.deleted_at.is_(None),
                 User.is_active.is_(True),
