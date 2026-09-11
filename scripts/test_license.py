@@ -1,16 +1,27 @@
 import sys
 
-from app.services.license_service import LicenseDocumentService
+from app.services.license_service import (
+    LicenseDocumentService,
+)
 
 
-def print_barcodes(title: str, barcodes) -> None:
-    print(f"\n========== {title} ==========")
+def print_barcodes(
+    barcodes,
+) -> None:
+    """
+    Print decoded barcodes.
+    """
+
+    print("\n========== BACK BARCODES ==========")
 
     if not barcodes:
         print("No readable barcode detected.")
         return
 
-    for index, barcode in enumerate(barcodes, start=1):
+    for index, barcode in enumerate(
+        barcodes,
+        start=1,
+    ):
         print(f"\nBarcode #{index}")
         print(f"Format       : {barcode.format}")
         print(f"Content type : {barcode.content_type}")
@@ -36,30 +47,62 @@ def main() -> None:
     print("LICENSE DOCUMENT EXTRACTION RESULT")
     print("=" * 60)
 
+    # ---------------------------------------------------------
+    # Front
+    # ---------------------------------------------------------
+
     print("\n========== FRONT OCR ==========")
-    print(f"Candidate      : {result.front.ocr.name}")
-    print(f"Confidence     : {result.front.ocr.confidence:.2f}")
+
+    if result.front.ocr:
+        print(f"Candidate      : {result.front.ocr.name}")
+
+        print(f"Confidence     : {result.front.ocr.confidence:.2f}")
+
+        print(f"Text           : {result.front.ocr.text}")
+
+    print(f"Name           : {result.front.name}")
+
+    print(f"Date of Birth  : {result.front.date_of_birth}")
+
     print(f"License Number : {result.front.license_number}")
-    print(f"Text           : {result.front.ocr.text}")
 
-    print("\n========== BACK OCR ==========")
-    print(f"Candidate      : {result.back.ocr.name}")
-    print(f"Confidence     : {result.back.ocr.confidence:.2f}")
-    print(f"License Number : {result.back.license_number}")
-    print(f"Text           : {result.back.ocr.text}")
+    print(f"Authority      : {result.front.authority}")
 
-    print_barcodes(
-        "FRONT BARCODES",
-        result.front.barcodes,
-    )
+    # ---------------------------------------------------------
+    # Back
+    # ---------------------------------------------------------
+
+    print("\n========== BACK ==========")
+
+    print(f"Barcode Status : {result.barcode_status}")
 
     print_barcodes(
-        "BACK BARCODES",
         result.back.barcodes,
     )
 
-    print("\n========== LICENSE NUMBER CHECK ==========")
-    print(f"Front/Back Match : {result.license_number_match}")
+    # ---------------------------------------------------------
+    # Final
+    # ---------------------------------------------------------
+
+    print("\n========== DOCUMENT STATUS ==========")
+
+    print(f"Front OCR      : {'AVAILABLE' if result.front.ocr else 'UNAVAILABLE'}")
+
+    print(
+        "License Number : "
+        f"{'EXTRACTED' if result.front.license_number else 'NOT FOUND'}"
+    )
+
+    print(
+        f"Date of Birth  : {'EXTRACTED' if result.front.date_of_birth else 'NOT FOUND'}"
+    )
+
+    print(f"Barcode        : {result.barcode_status}")
+
+    print(
+        "\nNote: This extraction does not prove "
+        "document authenticity or legal validity."
+    )
 
     print("\n" + "=" * 60)
 
