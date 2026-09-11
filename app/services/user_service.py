@@ -1,3 +1,5 @@
+import os
+import tempfile
 import uuid
 from datetime import datetime, timezone
 
@@ -15,6 +17,7 @@ from app.schemas.user import (
     LicenseSubmitRequest,
     UserUpdate,
 )
+from app.services.license_service import LicenseDocumentService
 from app.tasks.notifications import (
     send_license_decision_mail,
 )
@@ -114,7 +117,8 @@ class UserService:
         self,
         user_id: uuid.UUID,
         payload: LicenseSubmitRequest,
-        license_document: UploadFile,
+        front_file: UploadFile,
+        back_file: UploadFile,
     ):
         try:
             user = self.db.scalar(
@@ -131,10 +135,98 @@ class UserService:
                     detail="User not found",
                 )
 
+            front_suffix = os.path.splitext(front_file.filename or ".jpg")[1]
+
+            back_suffix = os.path.splitext(back_file.filename or ".jpg")[1]
+
+            front_temp = tempfile.NamedTemporaryFile(
+                delete=False,
+                suffix=front_suffix,
+            )
+
+            back_temp = tempfile.NamedTemporaryFile(
+                delete=False,
+                suffix=back_suffix,
+            )
+
+            try:
+                front_content = await front_file.read()
+                back_content = await back_file.read()
+
+                front_temp.write(front_content)
+                back_temp.write(back_content)
+
+                front_temp.close()
+                back_temp.close()
+
+                license_service = LicenseDocumentService()
+
+                result = license_service.extract(
+                    front_image_path=front_temp.name,
+                    back_image_path=back_temp.name,
+                )
+
+            finally:
+                if os.path.exists(front_temp.name):
+                    os.remove(front_temp.name)
+
+                if os.path.exists(back_temp.name):
+                    os.remove(back_temp.name)
+
+            extracted_license_number = result.front.license_number
+
+            extracted_date_of_birth = result.front.date_of_birth
+
+            if not extracted_license_number:
+                raise HTTPException(
+                    status_code=status.HTTP_400_BAD_REQUEST,
+                    detail="Could not extract license number from the front document",
+                )
+
+            if not extracted_date_of_birth:
+                raise HTTPException(
+                    status_code=status.HTTP_400_BAD_REQUEST,
+                    detail="Could not extract date of birth from the front document",
+                )
+
+            submitted_license_number = (
+                payload.license_number.upper().replace(" ", "").replace("-", "")
+            )
+
+            extracted_license_number = (
+                extracted_license_number.upper().replace(" ", "").replace("-", "")
+            )
+
+            try:
+                extracted_dob = datetime.strptime(
+                    extracted_date_of_birth,
+                    "%d%b%Y",
+                ).date()
+
+            except ValueError as e:
+                raise HTTPException(
+                    status_code=status.HTTP_400_BAD_REQUEST,
+                    detail="Could not parse date of birth from the front document",
+                ) from e
+
+            if extracted_license_number != submitted_license_number:
+                raise HTTPException(
+                    status_code=status.HTTP_400_BAD_REQUEST,
+                    detail="License number does not match the document",
+                )
+
+            if extracted_dob != payload.date_of_birth:
+                raise HTTPException(
+                    status_code=status.HTTP_400_BAD_REQUEST,
+                    detail="Date of birth does not match the document",
+                )
+
             user.date_of_birth = payload.date_of_birth
             user.license_number = payload.license_number
 
-            license_doc = await upload_image(license_document)
+            await front_file.seek(0)
+
+            license_doc = await upload_image(front_file)
 
             user.license_document_url = license_doc["url"]
             user.license_status = LicenseStatus.pending
@@ -149,6 +241,7 @@ class UserService:
 
         except Exception as e:
             self.db.rollback()
+
             raise HTTPException(
                 status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
                 detail="Failed to submit license",
