@@ -49,3 +49,4 @@ Faker>=40.36.0
 # httpx>=0.28.0
 opencv-python
 pytesseract
+zxing-cpp
