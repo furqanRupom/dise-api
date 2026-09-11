@@ -18,12 +18,12 @@ class TesseractOCRProvider(OCRProvider):
         self.languages = languages
 
     def extract_text(self, image_path: str) -> str:
-        processed_path = preprocess_image(image_path)
-
         try:
-            image = Image.open(processed_path)
+            processed = preprocess_image(image_path)
         except FileNotFoundError as e:
-            raise FileNotFoundError(f"Image not found: {processed_path}") from e
+            raise FileNotFoundError(f"Image not found: {image_path}") from e
+
+        image = Image.fromarray(processed)
 
         try:
             text = pytesseract.image_to_string(image, lang=self.languages)

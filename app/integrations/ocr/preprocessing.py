@@ -1,20 +1,53 @@
-"""
-Image preprocessing for OCR.
-
-This is intentionally a no-op passthrough for now. The real preprocessing
-pipeline (grayscale, resize, contrast enhancement, thresholding) is built
-in Phase 3, once we've confirmed raw OCR works end-to-end without it.
-Keeping this as its own module now means Phase 3 only has to touch this
-one file.
-"""
+import cv2
+import numpy as np
 
 
-def preprocess_image(image_path: str) -> str:
+def preprocess_image(
+    image_path: str, debug_output_path: str | None = None
+) -> np.ndarray:
     """
-    Placeholder preprocessing step.
+    Basic preprocessing pipeline to improve OCR accuracy.
 
-    Currently returns the image path unchanged. In Phase 3 this will load
-    the image, apply OpenCV preprocessing, and return a path to a
-    processed temporary image instead.
+    Steps: grayscale -> resize (upscale if small) -> contrast
+    enhancement -> adaptive thresholding.
+
+    Returns a processed image array (not a file path) that pytesseract
+    can accept directly.
+
+    If debug_output_path is provided, saves the processed image to disk
+    so it can be visually inspected.
     """
-    return image_path
+    image = cv2.imread(image_path)
+
+    if image is None:
+        raise FileNotFoundError(f"Could not read image: {image_path}")
+
+    gray = cv2.cvtColor(image, cv2.COLOR_BGR2GRAY)
+
+    height, width = gray.shape
+    if width < 1000:
+        scale = 1000 / width
+        gray = cv2.resize(
+            gray,
+            None,
+            fx=scale,
+            fy=scale,
+            interpolation=cv2.INTER_CUBIC,
+        )
+
+    clahe = cv2.createCLAHE(clipLimit=2.0, tileGridSize=(8, 8))
+    contrast_enhanced = clahe.apply(gray)
+
+    thresholded = cv2.adaptiveThreshold(
+        contrast_enhanced,
+        255,
+        cv2.ADAPTIVE_THRESH_GAUSSIAN_C,
+        cv2.THRESH_BINARY,
+        blockSize=31,
+        C=15,
+    )
+
+    if debug_output_path:
+        cv2.imwrite(debug_output_path, thresholded)
+
+    return thresholded
