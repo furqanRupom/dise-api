@@ -1,15 +1,25 @@
 import sys
 
-from app.services.license_service import (
-    LicenseDocumentService,
-)
+from app.services.license_service import LicenseDocumentService
+
+
+def print_barcodes(title: str, barcodes) -> None:
+    print(f"\n========== {title} ==========")
+
+    if not barcodes:
+        print("No readable barcode detected.")
+        return
+
+    for index, barcode in enumerate(barcodes, start=1):
+        print(f"\nBarcode #{index}")
+        print(f"Format       : {barcode.format}")
+        print(f"Content type : {barcode.content_type}")
+        print(f"Text         : {barcode.text}")
 
 
 def main() -> None:
     if len(sys.argv) != 3:
-        print(
-            "Usage: python scripts/test_license_document.py <front_image> <back_image>"
-        )
+        print("Usage: python scripts/test_license.py <front_image> <back_image>")
         sys.exit(1)
 
     front_image = sys.argv[1]
@@ -27,28 +37,29 @@ def main() -> None:
     print("=" * 60)
 
     print("\n========== FRONT OCR ==========")
-    print(f"Candidate   : {result.front.ocr.name}")
-    print(f"Confidence  : {result.front.ocr.confidence:.2f}")
-    print(f"Text        : {result.front.ocr.text}")
+    print(f"Candidate      : {result.front.ocr.name}")
+    print(f"Confidence     : {result.front.ocr.confidence:.2f}")
+    print(f"License Number : {result.front.license_number}")
+    print(f"Text           : {result.front.ocr.text}")
 
     print("\n========== BACK OCR ==========")
-    print(f"Candidate   : {result.back.ocr.name}")
-    print(f"Confidence  : {result.back.ocr.confidence:.2f}")
-    print(f"Text        : {result.back.ocr.text}")
+    print(f"Candidate      : {result.back.ocr.name}")
+    print(f"Confidence     : {result.back.ocr.confidence:.2f}")
+    print(f"License Number : {result.back.license_number}")
+    print(f"Text           : {result.back.ocr.text}")
 
-    print("\n========== BACK BARCODES ==========")
+    print_barcodes(
+        "FRONT BARCODES",
+        result.front.barcodes,
+    )
 
-    if not result.back.barcodes:
-        print("No readable barcode detected.")
-    else:
-        for index, barcode in enumerate(
-            result.back.barcodes,
-            start=1,
-        ):
-            print(f"\nBarcode #{index}")
-            print(f"Format       : {barcode.format}")
-            print(f"Content type : {barcode.content_type}")
-            print(f"Text         : {barcode.text}")
+    print_barcodes(
+        "BACK BARCODES",
+        result.back.barcodes,
+    )
+
+    print("\n========== LICENSE NUMBER CHECK ==========")
+    print(f"Front/Back Match : {result.license_number_match}")
 
     print("\n" + "=" * 60)
 

@@ -1,3 +1,4 @@
+import re
 from dataclasses import dataclass, field
 
 from app.integrations.barcode.base import BarcodeResult
@@ -17,6 +18,7 @@ class LicenseImageResult:
     image_path: str
     ocr: OCRCandidateResult
     barcodes: list[BarcodeResult] = field(default_factory=list)
+    license_number: str | None = None
 
 
 @dataclass
@@ -30,6 +32,7 @@ class LicenseDocumentResult:
 
     front: LicenseImageResult
     back: LicenseImageResult
+    license_number_match: bool = False
 
 
 class LicenseDocumentService:
@@ -49,6 +52,46 @@ class LicenseDocumentService:
         self.ocr_provider = ocr_provider or TesseractOCRProvider()
         self.barcode_provider = barcode_provider or ZXingBarcodeProvider()
 
+    @staticmethod
+    def _normalize_license_number(value: str) -> str:
+        """
+        Normalize a licence number before comparison.
+
+        OCR can confuse visually similar characters such as
+        O and 0.
+        """
+
+        value = value.upper().strip()
+
+        value = re.sub(r"[^A-Z0-9]", "", value)
+
+        return value.replace("O", "0")
+
+    @classmethod
+    def _extract_license_number(
+        cls,
+        text: str,
+    ) -> str | None:
+        """
+        Extract a likely Bangladesh driving licence number
+        from OCR text.
+
+        Current format observed in the sample:
+            DK0899123CL0012
+        """
+
+        normalized_text = text.upper()
+
+        matches = re.findall(
+            r"\bDK[A-Z0-9]{10,14}\b",
+            normalized_text,
+        )
+
+        if not matches:
+            return None
+
+        return cls._normalize_license_number(matches[0])
+
     def _process_image(
         self,
         image_path: str,
@@ -58,10 +101,7 @@ class LicenseDocumentService:
         """
         Process one side of the licence.
 
-        OCR always runs.
-
-        Barcode detection is optional because we currently expect
-        the barcode to be on the back side.
+        OCR and barcode detection are both performed when enabled.
         """
 
         ocr_result = self.ocr_provider.extract_best_result(image_path)
@@ -71,10 +111,13 @@ class LicenseDocumentService:
         if detect_barcode:
             barcodes = self.barcode_provider.decode(image_path)
 
+        license_number = self._extract_license_number(ocr_result.text)
+
         return LicenseImageResult(
             image_path=image_path,
             ocr=ocr_result,
             barcodes=barcodes,
+            license_number=license_number,
         )
 
     def extract(
@@ -83,14 +126,8 @@ class LicenseDocumentService:
         back_image_path: str,
     ) -> LicenseDocumentResult:
         """
-        Extract OCR and barcode information from both sides.
-
-        Args:
-            front_image_path: Path to the front image.
-            back_image_path: Path to the back image.
-
-        Returns:
-            Combined extraction result.
+        Extract OCR, licence number, and barcode information
+        from both sides.
         """
 
         front = self._process_image(
@@ -103,7 +140,14 @@ class LicenseDocumentService:
             detect_barcode=True,
         )
 
+        license_number_match = (
+            front.license_number is not None
+            and back.license_number is not None
+            and front.license_number == back.license_number
+        )
+
         return LicenseDocumentResult(
             front=front,
             back=back,
+            license_number_match=license_number_match,
         )
