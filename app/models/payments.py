@@ -1,4 +1,5 @@
 import uuid
+from decimal import Decimal
 
 from sqlalchemy import CheckConstraint, Enum, ForeignKey, Numeric, String
 from sqlalchemy.orm import Mapped, mapped_column, relationship
@@ -19,7 +20,7 @@ class Payment(Base, TimestampMixin):
         ForeignKey("bookings.id", ondelete="RESTRICT"), nullable=False, index=True
     )
     type: Mapped[PaymentType] = mapped_column(Enum(PaymentType), nullable=False)
-    amount: Mapped[float] = mapped_column(Numeric(10, 2), nullable=False)
+    amount: Mapped[Decimal] = mapped_column(Numeric(10, 2), nullable=False)
     currency: Mapped[str] = mapped_column(String(3), nullable=False)
     status: Mapped[PaymentStatus] = mapped_column(
         Enum(PaymentStatus), default=PaymentStatus.pending, nullable=False, index=True

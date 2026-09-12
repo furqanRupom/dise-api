@@ -29,12 +29,15 @@ class MaintenanceBlock(Base):
     )
 
     __table_args__ = (
-        CheckConstraint("end_date >= start_date", name="ck_maintenance_dates"),
+        CheckConstraint(
+            "end_date > start_date",
+            name="ck_maintenance_dates",
+        ),
         # Also requires btree_gist (same extension as bookings' exclude constraint).
         # text() wrap required - see booking.py for why a bare string breaks this.
         ExcludeConstraint(
             ("vehicle_id", "="),
-            (text("daterange(start_date, end_date, '[]')"), "&&"),
+            (text("daterange(start_date, end_date, '[)')"), "&&"),
             name="excl_no_overlap_maintenance",
         ),
     )

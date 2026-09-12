@@ -1,8 +1,8 @@
-"""initial all  table
+"""initial schema
 
-Revision ID: 0f87eacfee23
+Revision ID: 11ff81956cbc
 Revises: 
-Create Date: 2026-08-08 21:57:01.734533
+Create Date: 2026-09-12 21:32:03.690295
 
 """
 from typing import Sequence, Union
@@ -12,7 +12,7 @@ import sqlalchemy as sa
 from sqlalchemy.dialects import postgresql
 
 # revision identifiers, used by Alembic.
-revision: str = '0f87eacfee23'
+revision: str = '11ff81956cbc'
 down_revision: Union[str, Sequence[str], None] = None
 branch_labels: Union[str, Sequence[str], None] = None
 depends_on: Union[str, Sequence[str], None] = None
@@ -33,6 +33,7 @@ def upgrade() -> None:
     sa.Column('is_active', sa.Boolean(), nullable=False),
     sa.Column('created_at', sa.DateTime(timezone=True), server_default=sa.text('now()'), nullable=False),
     sa.Column('updated_at', sa.DateTime(timezone=True), server_default=sa.text('now()'), nullable=False),
+    sa.Column('deleted_at', sa.DateTime(timezone=True), nullable=True),
     sa.CheckConstraint('discount_value > 0', name='ck_coupons_discount_value'),
     sa.CheckConstraint('max_usage IS NULL OR max_usage > 0', name='ck_coupons_max_usage'),
     sa.CheckConstraint('usage_count >= 0', name='ck_coupons_usage_count'),
@@ -61,6 +62,7 @@ def upgrade() -> None:
     sa.Column('name', sa.String(), nullable=False),
     sa.Column('password', sa.String(), nullable=False),
     sa.Column('email', sa.String(), nullable=False),
+    sa.Column('avatar_url', sa.String(), nullable=True),
     sa.Column('role', sa.Enum('customer', 'fleet_staff', 'support', 'admin', name='userrole'), nullable=False),
     sa.Column('date_of_birth', sa.Date(), nullable=True),
     sa.Column('is_active', sa.Boolean(), nullable=False),
@@ -84,8 +86,10 @@ def upgrade() -> None:
     sa.Column('id', sa.Uuid(), nullable=False),
     sa.Column('name', sa.String(length=100), nullable=False),
     sa.Column('description', sa.String(length=500), nullable=True),
+    sa.Column('is_active', sa.Boolean(), server_default=sa.text('true'), nullable=False),
     sa.Column('created_at', sa.DateTime(timezone=True), server_default=sa.text('now()'), nullable=False),
     sa.Column('updated_at', sa.DateTime(timezone=True), server_default=sa.text('now()'), nullable=False),
+    sa.Column('deleted_at', sa.DateTime(timezone=True), nullable=True),
     sa.PrimaryKeyConstraint('id'),
     sa.UniqueConstraint('id'),
     sa.UniqueConstraint('name')
@@ -141,6 +145,7 @@ def upgrade() -> None:
     sa.Column('updated_at', sa.DateTime(timezone=True), server_default=sa.text('now()'), nullable=False),
     sa.Column('deleted_at', sa.DateTime(timezone=True), nullable=True),
     sa.CheckConstraint('daily_rate >= 0', name='ck_vehicles_rate'),
+    sa.CheckConstraint('deposit_amount >= 0', name='ck_vehicles_deposit'),
     sa.CheckConstraint('seats > 0', name='ck_vehicles_seats'),
     sa.CheckConstraint('year >= 1990', name='ck_vehicles_year'),
     sa.ForeignKeyConstraint(['category_id'], ['vehicle_categories.id'], ondelete='RESTRICT'),
@@ -172,11 +177,11 @@ def upgrade() -> None:
     sa.Column('created_at', sa.DateTime(timezone=True), server_default=sa.text('now()'), nullable=False),
     sa.Column('updated_at', sa.DateTime(timezone=True), server_default=sa.text('now()'), nullable=False),
     sa.Column('deleted_at', sa.DateTime(timezone=True), nullable=True),
-    postgresql.ExcludeConstraint((sa.column('vehicle_id'), '='), (sa.text("daterange(start_date, end_date, '[]')"), '&&'), where=sa.text("status IN ('confirmed','active') AND deleted_at IS NULL"), using='gist', name='excl_no_overlapping_confirmed_bookings'),
+    postgresql.ExcludeConstraint((sa.column('vehicle_id'), '='), (sa.text("daterange(start_date, end_date, '[)')"), '&&'), where=sa.text("status IN ('confirmed','active') AND deleted_at IS NULL"), using='gist', name='excl_no_overlapping_confirmed_bookings'),
     sa.CheckConstraint('base_price >= 0', name='ck_bookings_base_price'),
     sa.CheckConstraint('deposit_hold_amount >= 0', name='ck_bookings_deposit_hold_amount'),
     sa.CheckConstraint('discount_amount >= 0', name='ck_bookings_discount_amount'),
-    sa.CheckConstraint('end_date >= start_date', name='ck_bookings_dates'),
+    sa.CheckConstraint('end_date > start_date', name='ck_bookings_dates'),
     sa.CheckConstraint('total_price >= 0', name='ck_bookings_total_price'),
     sa.ForeignKeyConstraint(['coupon_id'], ['coupons.id'], ondelete='SET NULL'),
     sa.ForeignKeyConstraint(['created_by'], ['users.id'], ondelete='RESTRICT'),
@@ -199,8 +204,8 @@ def upgrade() -> None:
     sa.Column('reason', sa.String(length=255), nullable=True),
     sa.Column('created_by', sa.Uuid(), nullable=False),
     sa.Column('created_at', sa.DateTime(timezone=True), server_default=sa.text('now()'), nullable=False),
-    postgresql.ExcludeConstraint((sa.column('vehicle_id'), '='), (sa.text("daterange(start_date, end_date, '[]')"), '&&'), using='gist', name='excl_no_overlap_maintenance'),
-    sa.CheckConstraint('end_date >= start_date', name='ck_maintenance_dates'),
+    postgresql.ExcludeConstraint((sa.column('vehicle_id'), '='), (sa.text("daterange(start_date, end_date, '[)')"), '&&'), using='gist', name='excl_no_overlap_maintenance'),
+    sa.CheckConstraint('end_date > start_date', name='ck_maintenance_dates'),
     sa.ForeignKeyConstraint(['created_by'], ['users.id'], ondelete='RESTRICT'),
     sa.ForeignKeyConstraint(['vehicle_id'], ['vehicles.id'], ondelete='CASCADE'),
     sa.PrimaryKeyConstraint('id'),

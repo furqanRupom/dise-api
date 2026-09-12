@@ -1,5 +1,6 @@
 import uuid
 from datetime import date, datetime
+from decimal import Decimal
 
 from sqlalchemy import (
     CheckConstraint,
@@ -50,14 +51,18 @@ class Booking(Base, TimestampMixin, SoftDeleteMixin):
         nullable=False,
         index=True,
     )
-    base_price: Mapped[float] = mapped_column(Numeric(10, 2), nullable=False)
-    discount_amount: Mapped[float] = mapped_column(Numeric(10, 2), default=0)
-    total_price: Mapped[float] = mapped_column(Numeric(10, 2), nullable=False)
+    base_price: Mapped[Decimal] = mapped_column(Numeric(10, 2), nullable=False)
+    discount_amount: Mapped[Decimal] = mapped_column(
+        Numeric(10, 2), default=Decimal("0.00")
+    )
+    total_price: Mapped[Decimal] = mapped_column(Numeric(10, 2), nullable=False)
     currency: Mapped[str] = mapped_column(String(3), default="BDT", nullable=False)
     coupon_id: Mapped[uuid.UUID | None] = mapped_column(
         ForeignKey("coupons.id", ondelete="SET NULL")
     )
-    deposit_hold_amount: Mapped[float] = mapped_column(Numeric(10, 2), default=0)
+    deposit_hold_amount: Mapped[Decimal] = mapped_column(
+        Numeric(10, 2), default=Decimal("0.00")
+    )
     approval_deadline: Mapped[datetime | None] = mapped_column(DateTime(timezone=True))
     created_by: Mapped[uuid.UUID] = mapped_column(
         ForeignKey("users.id", ondelete="RESTRICT"), nullable=False
@@ -88,7 +93,10 @@ class Booking(Base, TimestampMixin, SoftDeleteMixin):
     )
 
     __table_args__ = (
-        CheckConstraint("end_date >= start_date", name="ck_bookings_dates"),
+        CheckConstraint(
+            "end_date > start_date",
+            name="ck_bookings_dates",
+        ),
         CheckConstraint("base_price >= 0", name="ck_bookings_base_price"),
         CheckConstraint("total_price >= 0", name="ck_bookings_total_price"),
         CheckConstraint("discount_amount >= 0", name="ck_bookings_discount_amount"),
@@ -107,7 +115,7 @@ class Booking(Base, TimestampMixin, SoftDeleteMixin):
         # which is what caused the ConstraintColumnNotFoundError.
         ExcludeConstraint(
             ("vehicle_id", "="),
-            (text("daterange(start_date, end_date, '[]')"), "&&"),
+            (text("daterange(start_date, end_date, '[)')"), "&&"),
             where=text("status IN ('confirmed','active') AND deleted_at IS NULL"),
             name="excl_no_overlapping_confirmed_bookings",
         ),

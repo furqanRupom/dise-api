@@ -1,5 +1,6 @@
 import uuid
 from datetime import datetime
+from decimal import Decimal
 
 from sqlalchemy import (
     Boolean,
@@ -62,9 +63,11 @@ class Vehicle(Base, TimestampMixin, SoftDeleteMixin):
     )
     fuel_type: Mapped[FuelType] = mapped_column(Enum(FuelType), nullable=False)
     seats: Mapped[int] = mapped_column(SmallInteger, nullable=False)
-    daily_rate: Mapped[float] = mapped_column(Numeric(10, 2), nullable=False)
+    daily_rate: Mapped[Decimal] = mapped_column(Numeric(10, 2), nullable=False)
     currency: Mapped[str] = mapped_column(String(3), default="BDT", nullable=False)
-    deposit_amount: Mapped[float] = mapped_column(Numeric(10, 2), default=0)
+    deposit_amount: Mapped[Decimal] = mapped_column(
+        Numeric(10, 2), default=Decimal("0.00"), nullable=False
+    )
     requires_approval: Mapped[bool] = mapped_column(Boolean, default=False)
     status: Mapped[VehicleStatus] = mapped_column(
         Enum(VehicleStatus), default=VehicleStatus.available, nullable=False
@@ -89,9 +92,7 @@ class Vehicle(Base, TimestampMixin, SoftDeleteMixin):
         CheckConstraint("year >= 1990", name="ck_vehicles_year"),
         CheckConstraint("seats > 0", name="ck_vehicles_seats"),
         CheckConstraint("daily_rate >= 0", name="ck_vehicles_rate"),
-        # partial index: most queries filter to non-deleted vehicles by
-        # location+status (search/availability), so exclude soft-deleted
-        # rows from the index rather than indexing rows that never match.
+        CheckConstraint("deposit_amount >= 0", name="ck_vehicles_deposit"),
         Index(
             "idx_vehicles_location_status",
             "location_id",
