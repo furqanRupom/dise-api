@@ -2,6 +2,7 @@ import uuid
 from datetime import datetime, timezone
 
 from fastapi import HTTPException, status
+from sqlalchemy import select
 from sqlalchemy.orm import Session
 
 from app.models import Location
@@ -57,19 +58,18 @@ class LocationService:
         return location
 
     """
-    Retrieves a location by its ID.
+    Retrieves all locations.
     """
 
     def get_location(
         self,
     ):
-        locations = (
-            self.db.query(Location)
-            .filter(Location.deleted_at._is(None))
-            .order_by(Location.created_at.desc())
-            .all()
+        result = self.db.execute(
+            select(Location)
+            .where(Location.deleted_at.is_(None), Location.is_active.is_(True))
+            .order_by(Location.created_at)
         )
-        return locations
+        return result.scalars()
 
     """
     Retrieves a location by its ID.

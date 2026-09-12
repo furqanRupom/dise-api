@@ -1,7 +1,7 @@
-"""all of validation schema's of booking model"""
+"""all validation schemas of booking model"""
 
 import uuid
-from datetime import date
+from datetime import date, datetime
 from decimal import Decimal
 
 from pydantic import BaseModel, ConfigDict, Field, model_validator
@@ -21,6 +21,7 @@ class BookingCreate(BaseModel):
     def validate_dates(self):
         if self.end_date <= self.start_date:
             raise ValueError("End date must be after start date")
+
         return self
 
 
@@ -36,6 +37,7 @@ class BookingResponse(BaseModel):
     model_config = ConfigDict(from_attributes=True)
 
     id: uuid.UUID
+
     customer_id: uuid.UUID
     vehicle_id: uuid.UUID
 
@@ -51,12 +53,14 @@ class BookingResponse(BaseModel):
     discount_amount: Decimal
     total_price: Decimal
     currency: str
-    coupon_id: uuid.UUID
 
-    deposit_hold_amount: int
-    approval_deadline: date
+    coupon_id: uuid.UUID | None
+
+    deposit_hold_amount: Decimal
+
+    approval_deadline: datetime | None
 
     created_by: uuid.UUID
 
-    created_at: date
-    updated_at: date
+    created_at: datetime
+    updated_at: datetime
