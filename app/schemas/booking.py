@@ -3,6 +3,7 @@
 import uuid
 from datetime import date, datetime
 from decimal import Decimal
+from typing import Literal
 
 from pydantic import BaseModel, ConfigDict, Field, model_validator
 
@@ -64,3 +65,49 @@ class BookingResponse(BaseModel):
 
     created_at: datetime
     updated_at: datetime
+
+
+class BookingListParams(BaseModel):
+    page: int = Field(default=1, ge=1)
+    limit: int = Field(default=20, ge=1, le=100)
+
+    status: BookingStatus | None = None
+
+    vehicle_id: uuid.UUID | None = None
+    customer_id: uuid.UUID | None = None
+
+    pickup_location_id: uuid.UUID | None = None
+    dropoff_location_id: uuid.UUID | None = None
+
+    start_date_from: date | None = None
+    start_date_to: date | None = None
+
+    end_date_from: date | None = None
+    end_date_to: date | None = None
+
+    price_min: Decimal | None = Field(default=None, ge=0)
+    price_max: Decimal | None = Field(default=None, ge=0)
+
+    sort_by: Literal[
+        "created_at",
+        "updated_at",
+        "start_date",
+        "end_date",
+        "total_price",
+        "status",
+    ] = "created_at"
+
+    sort_order: Literal["asc", "desc"] = "desc"
+
+
+class BookingListResponse(BaseModel):
+    items: list[BookingResponse]
+
+    page: int
+    limit: int
+
+    total: int
+    total_pages: int
+
+    has_next: bool
+    has_previous: bool
