@@ -5,7 +5,7 @@ from datetime import date, datetime, timedelta, timezone
 from decimal import Decimal
 
 from fastapi import HTTPException, status
-from sqlalchemy import select
+from sqlalchemy import func, select
 from sqlalchemy.orm import Session
 
 from app.models import BookingStatusHistory
@@ -14,7 +14,7 @@ from app.models.enums import BookingStatus
 from app.models.location import Location
 from app.models.maintenance import MaintenanceBlock
 from app.models.vehicle import Vehicle
-from app.schemas.booking import BookingCreate
+from app.schemas.booking import BookingCreate, BookingListParams
 
 
 class BookingService:
@@ -276,3 +276,102 @@ class BookingService:
         self.db.refresh(booking)
 
         return booking
+
+    def get_customer_bookings(
+        self, customer_id: uuid.UUID, params: BookingListParams
+    ) -> tuple[list[Booking], int]:
+        """
+        Retrieve a paginated list of bookings for a customer.
+        """
+
+        query = select(Booking).where(
+            Booking.customer_id == customer_id, Booking.deleted_at.is_(None)
+        )
+
+        count_query = (
+            select(func.count())
+            .select_from(Booking)
+            .where(Booking.customer_id == customer_id, Booking.deleted_at.is_(None))
+        )
+
+        # filters
+        if params.status is not None:
+            query = query.where(Booking.status == params.status)
+            count_query = count_query.where(Booking.status == params.status)
+
+        if params.vehicle_id is not None:
+            query = query.where(Booking.vehicle_id == params.vehicle_id)
+            count_query = count_query.where(Booking.status == params.vehicle_id)
+
+        if params.pickup_location_id is not None:
+            query = query.where(Booking.pickup_location_id == params.pickup_location_id)
+            count_query = count_query.where(
+                Booking.pickup_location_id == params.pickup_location_id
+            )
+
+        if params.dropoff_location_id is not None:
+            query = query.where(
+                Booking.dropoff_location_id == params.dropoff_location_id
+            )
+            count_query = count_query.where(
+                Booking.dropoff_location_id == params.dropoff_location_id
+            )
+
+        if params.start_date_from is not None:
+            query = query.where(Booking.start_date >= params.start_date_from)
+
+            count_query = count_query.where(
+                Booking.start_date >= params.start_date_from
+            )
+
+        if params.start_date_to is not None:
+            query = query.where(Booking.start_date <= params.start_date_to)
+
+            count_query = count_query.where(Booking.start_date <= params.start_date_to)
+
+        if params.end_date_from is not None:
+            query = query.where(Booking.end_date >= params.end_date_from)
+
+            count_query = count_query.where(Booking.end_date >= params.end_date_from)
+
+        if params.end_date_to is not None:
+            query = query.where(Booking.end_date >= params.end_date_to)
+            count_query = count_query.where(Booking.end_date >= params.end_date_to)
+
+        if params.price_min is not None:
+            query = query.where(Booking.total_price >= params.price_min)
+            count_query = count_query.where(Booking.total_price >= params.price_min)
+
+        if params.price_max is not None:
+            query = query.where(Booking.total_price <= params.price_max)
+            count_query = query.where(Booking.total_price <= params.price_min)
+
+        # sorting
+
+        sort_column = {
+            "created_at": Booking.created_at,
+            "updated_at": Booking.updated_at,
+            "start_date": Booking.start_date,
+            "end_date": Booking.end_date,
+            "total_price": Booking.total_price,
+            "status": Booking.status,
+        }[params.sort_by]
+
+        if params.sort_order == "asc":
+            query = query.order_by(sort_column.asc(), Booking.id.asc())
+        else:
+            query = query.order_by(sort_column.desc(), Booking.id.desc())
+
+        # pagination
+
+        offset = (params.page - 1) * params.limit
+
+        query = query.offset(offset).limit(params.limit)
+
+        # execute count query
+        total = self.db.execute(count_query).scalar_one()
+
+        # execute bookings query
+        bookings = list(self.db.execute(query).scalars().all())
+
+        return bookings, total
