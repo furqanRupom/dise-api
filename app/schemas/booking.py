@@ -7,7 +7,6 @@ from typing import Literal
 
 from pydantic import BaseModel, ConfigDict, Field, model_validator
 
-from app.models.booking import Booking
 from app.models.enums import BookingStatus
 
 
@@ -102,8 +101,7 @@ class BookingListParams(BaseModel):
 
 
 class BookingListResponse(BaseModel):
-    model_config = ConfigDict(from_attributes=True)
-    items: list[Booking]
+    items: list[BookingResponse]
 
     page: int
     limit: int
