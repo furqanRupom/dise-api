@@ -9,11 +9,17 @@ from typing import Annotated
 
 from fastapi import APIRouter, Depends, status
 from sqlalchemy.orm import Session
+from starlette.status import HTTP_200_OK
 
 from app.core.dependencies import require_user
 from app.db import get_db
 from app.models.user import User
-from app.schemas.booking import BookingCreate, BookingResponse
+from app.schemas.booking import (
+    BookingCreate,
+    BookingListParams,
+    BookingListResponse,
+    BookingResponse,
+)
 from app.services.booking_service import BookingService
 
 router = APIRouter(
@@ -95,4 +101,41 @@ async def create_booking(
     return booking_service.create_booking(
         customer_id=current_user.id,
         payload=payload,
+    )
+
+
+@router.get(
+    "/my",
+    response_model=BookingListResponse,
+    status_code=HTTP_200_OK,
+    summary="List my bookings",
+    description=(
+        "Return paginated bookings belonging to the currently "
+        "authenticated customer. Supports filtering and sorting."
+    ),
+)
+async def get_my_bookings(
+    db: Annotated[Session, Depends(get_db)],
+    params: Annotated[BookingListParams, Depends()],
+    current_user: Annotated[User, Depends(require_user)],
+):
+    """Return the authenticated customer's bookings."""
+
+    booking_service = BookingService(db)
+
+    bookings, total = booking_service.get_customer_bookings(
+        current_user.id,
+        params,
+    )
+
+    total_pages = (total + params.limit - 1) // params.limit if total > 0 else 0
+
+    return BookingListResponse(
+        items=bookings,
+        page=params.page,
+        limit=params.limit,
+        total=total,
+        total_pages=total_pages,
+        has_previous=params.page > 1,
+        has_next=params.page < total_pages,
     )
