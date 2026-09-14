@@ -131,11 +131,11 @@ async def get_my_bookings(
     total_pages = (total + params.limit - 1) // params.limit if total > 0 else 0
 
     return BookingListResponse(
-        items=[BookingResponse.model_validate(booking) for booking in bookings],
         page=params.page,
         limit=params.limit,
         total=total,
         total_pages=total_pages,
         has_previous=params.page > 1,
         has_next=params.page < total_pages,
+        data=[BookingResponse.model_validate(booking) for booking in bookings],
     )

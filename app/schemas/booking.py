@@ -101,8 +101,6 @@ class BookingListParams(BaseModel):
 
 
 class BookingListResponse(BaseModel):
-    items: list[BookingResponse]
-
     page: int
     limit: int
 
@@ -111,3 +109,5 @@ class BookingListResponse(BaseModel):
 
     has_next: bool
     has_previous: bool
+
+    data: list[BookingResponse]
