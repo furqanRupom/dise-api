@@ -7,6 +7,7 @@ from decimal import Decimal
 from fastapi import HTTPException, status
 from sqlalchemy import func, select
 from sqlalchemy.orm import Session
+from starlette.status import HTTP_404_NOT_FOUND
 
 from app.models import BookingStatusHistory
 from app.models.booking import Booking
@@ -380,3 +381,22 @@ class BookingService:
         bookings = list(self.db.execute(query).scalars().all())
 
         return bookings, total
+
+    def get_customer_booking(
+        self, customer_id: uuid.UUID, booking_id: uuid.UUID
+    ) -> Booking:
+        """Get Specific Booking for customer"""
+        booking = self.db.execute(
+            select(Booking).where(
+                Booking.id == booking_id,
+                Booking.customer_id == customer_id,
+                Booking.deleted_at.is_(None),
+            )
+        ).scalar_one()
+
+        if not booking:
+            raise HTTPException(
+                status_code=HTTP_404_NOT_FOUND, detail="Booking not found"
+            )
+
+        return booking

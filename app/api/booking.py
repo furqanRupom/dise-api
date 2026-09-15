@@ -7,6 +7,7 @@ role-specific routers to keep the API easier to maintain.
 
 from typing import Annotated
 
+from amqp.connection import uuid
 from fastapi import APIRouter, Depends, status
 from sqlalchemy.orm import Session
 from starlette.status import HTTP_200_OK
@@ -139,3 +140,22 @@ async def get_my_bookings(
         has_next=params.page < total_pages,
         data=[BookingResponse.model_validate(booking) for booking in bookings],
     )
+
+
+@router.get(
+    "/my/{booking_id}",
+    response_model=BookingResponse,
+    status_code=HTTP_200_OK,
+    summary="my booking",
+    description=("Return specific customer booking "),
+)
+async def get_my_booking(
+    booking_id: uuid.UUID,
+    db: Annotated[Session, Depends(get_db)],
+    current_user: Annotated[User, Depends(require_user)],
+):
+    """Return the authenticated customer's booking."""
+
+    booking_service = BookingService(db)
+    booking = booking_service.get_customer_booking(current_user.id, booking_id)
+    return BookingResponse.model_validate(booking)
