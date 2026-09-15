@@ -400,3 +400,120 @@ class BookingService:
             )
 
         return booking
+
+    def get_bookings(
+        self,
+        params: BookingListParams,
+    ) -> tuple[list[Booking], int]:
+        """Retrieve a paginated list of bookings for a Admin/Staff."""
+
+        query = select(Booking).where(
+            Booking.deleted_at.is_(None),
+        )
+
+        count_query = (
+            select(func.count())
+            .select_from(Booking)
+            .where(
+                Booking.deleted_at.is_(None),
+            )
+        )
+
+        # Filters
+        if params.status is not None:
+            query = query.where(Booking.status == params.status)
+            count_query = count_query.where(Booking.status == params.status)
+
+        if params.vehicle_id is not None:
+            query = query.where(Booking.vehicle_id == params.vehicle_id)
+            count_query = count_query.where(Booking.vehicle_id == params.vehicle_id)
+
+        if params.pickup_location_id is not None:
+            query = query.where(Booking.pickup_location_id == params.pickup_location_id)
+            count_query = count_query.where(
+                Booking.pickup_location_id == params.pickup_location_id
+            )
+
+        if params.dropoff_location_id is not None:
+            query = query.where(
+                Booking.dropoff_location_id == params.dropoff_location_id
+            )
+            count_query = count_query.where(
+                Booking.dropoff_location_id == params.dropoff_location_id
+            )
+
+        if params.start_date_from is not None:
+            query = query.where(Booking.start_date >= params.start_date_from)
+            count_query = count_query.where(
+                Booking.start_date >= params.start_date_from
+            )
+
+        if params.start_date_to is not None:
+            query = query.where(Booking.start_date <= params.start_date_to)
+            count_query = count_query.where(Booking.start_date <= params.start_date_to)
+
+        if params.end_date_from is not None:
+            query = query.where(Booking.end_date >= params.end_date_from)
+            count_query = count_query.where(Booking.end_date >= params.end_date_from)
+
+        if params.end_date_to is not None:
+            query = query.where(Booking.end_date <= params.end_date_to)
+            count_query = count_query.where(Booking.end_date <= params.end_date_to)
+
+        if params.price_min is not None:
+            query = query.where(Booking.total_price >= params.price_min)
+            count_query = count_query.where(Booking.total_price >= params.price_min)
+
+        if params.price_max is not None:
+            query = query.where(Booking.total_price <= params.price_max)
+            count_query = count_query.where(Booking.total_price <= params.price_max)
+
+        # Sorting
+        sort_column = {
+            "created_at": Booking.created_at,
+            "updated_at": Booking.updated_at,
+            "start_date": Booking.start_date,
+            "end_date": Booking.end_date,
+            "total_price": Booking.total_price,
+            "status": Booking.status,
+        }[params.sort_by]
+
+        if params.sort_order == "asc":
+            query = query.order_by(
+                sort_column.asc(),
+                Booking.id.asc(),
+            )
+        else:
+            query = query.order_by(
+                sort_column.desc(),
+                Booking.id.desc(),
+            )
+
+        # Pagination
+        offset = (params.page - 1) * params.limit
+
+        query = query.offset(offset).limit(params.limit)
+
+        # Execute count query
+        total = self.db.execute(count_query).scalar_one()
+
+        # Execute bookings query
+        bookings = list(self.db.execute(query).scalars().all())
+
+        return bookings, total
+
+    def get_booking(self, booking_id: uuid.UUID) -> Booking:
+        """Get Specific Booking for Admin/staff"""
+        booking = self.db.execute(
+            select(Booking).where(
+                Booking.id == booking_id,
+                Booking.deleted_at.is_(None),
+            )
+        ).scalar_one()
+
+        if not booking:
+            raise HTTPException(
+                status_code=HTTP_404_NOT_FOUND, detail="Booking not found"
+            )
+
+        return booking

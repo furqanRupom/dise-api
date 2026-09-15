@@ -12,7 +12,7 @@ from fastapi import APIRouter, Depends, status
 from sqlalchemy.orm import Session
 from starlette.status import HTTP_200_OK
 
-from app.core.dependencies import require_user
+from app.core.dependencies import require_admin_or_staff, require_user
 from app.db import get_db
 from app.models.user import User
 from app.schemas.booking import (
@@ -158,4 +158,59 @@ async def get_my_booking(
 
     booking_service = BookingService(db)
     booking = booking_service.get_customer_booking(current_user.id, booking_id)
+    return BookingResponse.model_validate(booking)
+
+
+@router.get(
+    "/",
+    response_model=BookingListResponse,
+    status_code=HTTP_200_OK,
+    summary="List all bookings",
+    description=(
+        "Return paginated bookings belonging to the currently "
+        "authenticated Admin/Staff. Supports filtering and sorting."
+    ),
+)
+async def get_bookings(
+    db: Annotated[Session, Depends(get_db)],
+    params: Annotated[BookingListParams, Depends()],
+    current_user: Annotated[User, Depends(require_admin_or_staff)],
+):
+    """Return all of bookings for Admin/Staff"""
+
+    booking_service = BookingService(db)
+
+    bookings, total = booking_service.get_bookings(
+        params,
+    )
+
+    total_pages = (total + params.limit - 1) // params.limit if total > 0 else 0
+
+    return BookingListResponse(
+        page=params.page,
+        limit=params.limit,
+        total=total,
+        total_pages=total_pages,
+        has_previous=params.page > 1,
+        has_next=params.page < total_pages,
+        data=[BookingResponse.model_validate(booking) for booking in bookings],
+    )
+
+
+@router.get(
+    "{booking_id}",
+    response_model=BookingResponse,
+    status_code=HTTP_200_OK,
+    summary="my booking",
+    description=("Return specific booking "),
+)
+async def get_booking(
+    booking_id: uuid.UUID,
+    db: Annotated[Session, Depends(get_db)],
+    current_user: Annotated[User, Depends(require_admin_or_staff)],
+):
+    """Return specific booking for Admin/Staff."""
+
+    booking_service = BookingService(db)
+    booking = booking_service.get_booking(booking_id)
     return BookingResponse.model_validate(booking)
