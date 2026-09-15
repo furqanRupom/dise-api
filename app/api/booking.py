@@ -198,7 +198,7 @@ async def get_bookings(
 
 
 @router.get(
-    "{booking_id}",
+    "/{booking_id}",
     response_model=BookingResponse,
     status_code=HTTP_200_OK,
     summary="Specific booking",
