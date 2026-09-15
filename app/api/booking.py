@@ -201,7 +201,7 @@ async def get_bookings(
     "{booking_id}",
     response_model=BookingResponse,
     status_code=HTTP_200_OK,
-    summary="my booking",
+    summary="Specific booking",
     description=("Return specific booking "),
 )
 async def get_booking(
