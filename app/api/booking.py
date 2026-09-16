@@ -214,3 +214,6 @@ async def get_booking(
     booking_service = BookingService(db)
     booking = booking_service.get_booking(booking_id)
     return BookingResponse.model_validate(booking)
+
+
+""" We are in Phase 2 we will continue in phase 2"""
