@@ -19,6 +19,7 @@ from app.schemas.booking import (
     BookingCreate,
     BookingListParams,
     BookingListResponse,
+    BookingRejectRequest,
     BookingResponse,
 )
 from app.services.booking_service import BookingService
@@ -216,4 +217,26 @@ async def get_booking(
     return BookingResponse.model_validate(booking)
 
 
-""" We are in Phase 2 we will continue in phase 2"""
+@router.put("/{booking_id}/approve")
+async def approve_booking(
+    booking_id: uuid.UUID,
+    db: Annotated[Session, Depends(get_db)],
+    current_user: Annotated[User, Depends(require_admin_or_staff)],
+):
+    """Approved pending bookings for Admin/Staff"""
+
+    booking_service = BookingService(db)
+    return booking_service.approve_booking(booking_id, current_user.id)
+
+
+@router.put("/{booking_id}/reject")
+async def reject_booking(
+    booking_id: uuid.UUID,
+    payload: BookingRejectRequest,
+    db: Annotated[Session, Depends(get_db)],
+    current_user: Annotated[User, Depends(require_admin_or_staff)],
+):
+    """reject pending bookings for Admin/Staff"""
+
+    booking_service = BookingService(db)
+    return booking_service.reject_booking(booking_id, current_user.id, payload.reason)

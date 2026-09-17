@@ -111,3 +111,7 @@ class BookingListResponse(BaseModel):
     has_previous: bool
 
     data: list[BookingResponse]
+
+
+class BookingRejectRequest(BaseModel):
+    reason: str = Field(..., min_length=1, max_length=500)
