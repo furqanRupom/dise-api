@@ -43,6 +43,7 @@ class BookingStatus(str, enum.Enum):
     completed = "completed"
     cancelled = "cancelled"
     rejected = "rejected"
+    expired = "expired"
     no_show = "no_show"
 
 

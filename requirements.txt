@@ -50,3 +50,4 @@ Faker>=40.36.0
 opencv-python
 pytesseract
 zxing-cpp
+alembic-postgresql-enum
