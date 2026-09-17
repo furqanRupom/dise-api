@@ -278,6 +278,126 @@ class BookingService:
 
         return booking
 
+    def approve_booking(self, booking_id: uuid.UUID, changed_by: uuid.UUID) -> Booking:
+        """Approve a pending booking before its approval deadline."""
+
+        booking = self.get_booking(booking_id)
+
+        if booking.status != BookingStatus.pending_approval:
+            raise HTTPException(
+                status_code=status.HTTP_409_CONFLICT,
+                detail="Only bookings pending approval can be approved",
+            )
+        now = datetime.now(timezone.utc)
+
+        if booking.approval_deadline is not None and booking.approval_deadline <= now:
+            raise HTTPException(
+                status_code=status.HTTP_409_CONFLICT,
+                detail="Booking approval deadline is expired!",
+            )
+        previous_status = booking.status
+
+        booking.status = BookingStatus.pending_payment
+        booking.approval_deadline = None
+
+        history = BookingStatusHistory(
+            booking=booking,
+            from_status=previous_status.value,
+            to_status=BookingStatus.pending_payment.value,
+            changed_by=changed_by,
+            reason="Booking approved",
+        )
+
+        self.db.add(history)
+
+        try:
+            self.db.commit()
+        except Exception:
+            self.db.rollback()
+
+        self.db.refresh(booking)
+        return booking
+
+    def reject_booking(self, booking_id: uuid.UUID, changed_by: uuid.UUID, reason: str):
+        """Reject a pending booking and record the rejection reason."""
+
+        booking = self.get_booking(booking_id)
+
+        if booking.status != BookingStatus.pending_approval:
+            raise HTTPException(
+                status_code=status.HTTP_409_CONFLICT,
+                detail="Only bookings pending approval can be rejected",
+            )
+
+        reason = reason.strip()
+
+        if not reason:
+            raise HTTPException(
+                status_code=status.HTTP_400_BAD_REQUEST,
+                detail="Rejection reason is required.",
+            )
+
+        previous_status = booking.status
+
+        booking.status = BookingStatus.rejected
+        booking.approval_deadline = None
+
+        history = BookingStatusHistory(
+            booking=booking,
+            from_status=previous_status.value,
+            to_status=BookingStatus.rejected.value,
+            changed_by=changed_by,
+            reason=reason,
+        )
+        self.db.add(history)
+
+        try:
+            self.db.commit()
+        except Exception:
+            self.db.rollback()
+
+        self.db.refresh(booking)
+        return booking
+
+    def expire_pending_approvals(self) -> int:
+        """Expire pending bookings whose approval deadline has passed."""
+
+        now = datetime.now(timezone.utc)
+
+        result = self.db.execute(
+            select(Booking).where(
+                Booking.status == BookingStatus.pending_approval,
+                Booking.approval_deadline.is_(None),
+                Booking.approval_deadline <= now,
+                Booking.deleted_at.is_(None),
+            )
+        )
+
+        bookings = list(result.scalars().all())
+        if not bookings:
+            return 0
+
+        for booking in bookings:
+            booking.status = BookingStatus.expired
+            booking.approval_deadline = None
+
+            history = BookingStatusHistory(
+                booking=booking,
+                from_status=BookingStatus.pending_approval.value,
+                to_status=BookingStatus.expired.value,
+                changed_by=None,
+                reason="Booking approval deadline expired ",
+            )
+            self.db.add(history)
+
+        try:
+            self.db.commit()
+        except Exception:
+            self.db.rollback()
+            raise
+
+        return len(bookings)
+
     def get_customer_bookings(
         self,
         customer_id: uuid.UUID,
