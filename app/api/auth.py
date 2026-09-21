@@ -20,7 +20,6 @@ from app.db.database import get_db
 from app.db.redis import get_redis
 from app.models import User
 from app.schemas.auth import Login, OTPVerify, Register, ResetPassword, TokenPair
-from app.schemas.response import SendRespose
 from app.services.auth_service import AuthService
 
 router = APIRouter(prefix="/v1/auth", tags=["auth"])
