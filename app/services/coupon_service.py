@@ -2,6 +2,7 @@ from datetime import datetime, timezone
 from uuid import UUID
 
 from fastapi import HTTPException, status
+from sqlalchemy import select
 from sqlalchemy.exc import IntegrityError
 from sqlalchemy.orm import Session
 
@@ -14,17 +15,27 @@ class CouponService:
         self.db = db
 
     def get_coupons(self):
-        coupons = self.db.query(Coupon).order_by(Coupon.created_at.desc()).all()
-        return coupons
+        result = self.db.execute(
+            select(Coupon)
+            .where(Coupon.deleted_at.is_(None))
+            .order_by(Coupon.created_at.desc())
+        )
+        return result.scalars().all()
 
     def create_coupon(self, payload: CouponCreate):
         code = payload.code.strip().upper()
 
-        existing_coupon = self.db.query(Coupon).filter_by(code=code).first()
+        existing_coupon = self.db.execute(
+            select(Coupon).where(
+                Coupon.code == code,
+                Coupon.deleted_at.is_(None),
+            )
+        ).scalar_one_or_none()
 
         if existing_coupon:
             raise HTTPException(
-                status_code=status.HTTP_409_CONFLICT, detail="Coupon already exists"
+                status_code=status.HTTP_409_CONFLICT,
+                detail="Coupon already exists",
             )
 
         if payload.valid_to <= payload.valid_from:
@@ -34,6 +45,7 @@ class CouponService:
             )
 
         coupon_data = payload.model_dump(exclude={"code"})
+
         coupon = Coupon(
             **coupon_data,
             code=code,
@@ -43,7 +55,9 @@ class CouponService:
             self.db.add(coupon)
             self.db.commit()
             self.db.refresh(coupon)
+
             return coupon
+
         except IntegrityError:
             self.db.rollback()
             raise HTTPException(
@@ -52,16 +66,19 @@ class CouponService:
             )
 
     def get_coupon(self, coupon_id: UUID):
-        coupon = (
-            self.db.query(Coupon)
-            .filter(Coupon.id == coupon_id, Coupon.deleted_at.is_(None))
-            .first()
-        )
+        coupon = self.db.execute(
+            select(Coupon).where(
+                Coupon.id == coupon_id,
+                Coupon.deleted_at.is_(None),
+            )
+        ).scalar_one_or_none()
+
         if not coupon:
             raise HTTPException(
                 status_code=status.HTTP_404_NOT_FOUND,
                 detail="Coupon not found",
             )
+
         return coupon
 
     def update_coupon(
@@ -77,14 +94,13 @@ class CouponService:
         if "code" in update_data:
             code = update_data["code"].strip().upper()
 
-            existing_coupon = (
-                self.db.query(Coupon)
-                .filter(
+            existing_coupon = self.db.execute(
+                select(Coupon).where(
                     Coupon.code == code,
                     Coupon.id != coupon_id,
+                    Coupon.deleted_at.is_(None),
                 )
-                .first()
-            )
+            ).scalar_one_or_none()
 
             if existing_coupon:
                 raise HTTPException(
@@ -130,23 +146,19 @@ class CouponService:
 
     def delete_coupon(self, coupon_id: UUID):
         coupon = self.get_coupon(coupon_id)
-        if not coupon:
-            raise HTTPException(
-                status_code=status.HTTP_404_NOT_FOUND,
-                detail="Coupon not found",
-            )
+
         coupon.deleted_at = datetime.now(timezone.utc)
+
         self.db.commit()
+        self.db.refresh(coupon)
+
         return coupon
 
     def activate_coupon(self, coupon_id: UUID):
         coupon = self.get_coupon(coupon_id)
-        if not coupon:
-            raise HTTPException(
-                status_code=status.HTTP_404_NOT_FOUND,
-                detail="Coupon not found",
-            )
+
         now = datetime.now(timezone.utc)
+
         if now > coupon.valid_to:
             raise HTTPException(
                 status_code=status.HTTP_400_BAD_REQUEST,
@@ -154,16 +166,18 @@ class CouponService:
             )
 
         coupon.is_active = True
+
         self.db.commit()
+        self.db.refresh(coupon)
+
         return coupon
 
     def deactivate_coupon(self, coupon_id: UUID):
         coupon = self.get_coupon(coupon_id)
-        if not coupon:
-            raise HTTPException(
-                status_code=status.HTTP_404_NOT_FOUND,
-                detail="Coupon not found",
-            )
+
         coupon.is_active = False
+
         self.db.commit()
+        self.db.refresh(coupon)
+
         return coupon
