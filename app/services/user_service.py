@@ -27,15 +27,22 @@ class UserService:
     def __init__(self, db: Session):
         self.db = db
 
-    async def update_user(self, user_id: uuid.UUID, payload: UserUpdate):
-        user = self.db.query(User).filter_by(id=user_id).first()
-        update_data = payload.model_dump(
-            exclude_unset=True,
-        )
+    def user_by_id(self, user_id: uuid.UUID):
+        user = self.db.execute(
+            select(User).where(User.id == user_id, User.deleted_at.is_(None))
+        ).scalar_one_or_none()
+
         if not user:
             raise HTTPException(
                 status_code=status.HTTP_404_NOT_FOUND, detail="User not found"
             )
+        return user
+
+    async def update_user(self, user_id: uuid.UUID, payload: UserUpdate):
+        _ = self.user_by_id(user_id)
+        update_data = payload.model_dump(
+            exclude_unset=True,
+        )
 
         result = self.db.execute(
             update(User).where(User.id == user_id).values(**update_data).returning(User)
@@ -53,13 +60,7 @@ class UserService:
         user_id: uuid.UUID,
         file: UploadFile,
     ) -> User:
-        user = self.db.query(User).filter(User.id == user_id).first()
-
-        if not user:
-            raise HTTPException(
-                status_code=status.HTTP_404_NOT_FOUND,
-                detail="User not found",
-            )
+        user = self.user_by_id(user_id)
 
         # Upload new image to Cloudinary
         result = await upload_image(file)
@@ -83,12 +84,7 @@ class UserService:
         return user
 
     async def change_password(self, user_id: uuid.UUID, payload: ChangePassword):
-        user = self.db.query(User).filter_by(id=user_id).first()
-        if not user:
-            raise HTTPException(
-                status_code=status.HTTP_404_NOT_FOUND, detail="User not found"
-            )
-
+        user = self.user_by_id(user_id)
         verify_pass = verify_password(payload.current_password, user.password)
         if not verify_pass:
             raise HTTPException(
@@ -101,15 +97,7 @@ class UserService:
         self.db.commit()
 
     async def delete_account(self, user_id: uuid.UUID):
-        user = (
-            self.db.query(User)
-            .filter(User.id == user_id, User.deleted_at.is_(None))
-            .first()
-        )
-        if not user:
-            raise HTTPException(
-                status_code=status.HTTP_404_NOT_FOUND, detail="User not found"
-            )
+        user = self.user_by_id(user_id)
         user.deleted_at = datetime.now(timezone.utc)
         self.db.commit()
 
@@ -121,19 +109,7 @@ class UserService:
         back_file: UploadFile,
     ):
         try:
-            user = self.db.scalar(
-                select(User).where(
-                    User.id == user_id,
-                    User.is_active.is_(True),
-                    User.deleted_at.is_(None),
-                )
-            )
-
-            if not user:
-                raise HTTPException(
-                    status_code=status.HTTP_404_NOT_FOUND,
-                    detail="User not found",
-                )
+            user = self.user_by_id(user_id)
 
             front_suffix = os.path.splitext(front_file.filename or ".jpg")[1]
 
