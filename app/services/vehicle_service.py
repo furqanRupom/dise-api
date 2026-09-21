@@ -1,4 +1,5 @@
 import uuid
+from collections.abc import Sequence
 from datetime import datetime, timezone
 
 from fastapi import HTTPException, UploadFile, status
@@ -15,23 +16,25 @@ class VehicleService:
     def __init__(self, db: Session):
         self.db = db
 
-    def get_vehicles(self) -> list[Vehicle]:
-        return (
-            self.db.query(Vehicle)
-            .filter(Vehicle.deleted_at.is_(None))
-            .order_by(Vehicle.created_at)
+    def get_vehicles(self) -> Sequence[Vehicle]:
+        result = (
+            self.db.execute(
+                select(Vehicle)
+                .where(Vehicle.deleted_at.is_(None))
+                .order_by(Vehicle.created_at)
+            )
+            .scalars()
             .all()
         )
+        return result
 
     def get_vehicle(self, vehicle_id: uuid.UUID) -> Vehicle:
-        vehicle = (
-            self.db.query(Vehicle)
-            .filter(
+        vehicle = self.db.execute(
+            select(Vehicle).where(
                 Vehicle.id == vehicle_id,
                 Vehicle.deleted_at.is_(None),
             )
-            .first()
-        )
+        ).scalar_one_or_none()
 
         if not vehicle:
             raise HTTPException(
@@ -43,15 +46,13 @@ class VehicleService:
 
     def create_vehicle(self, payload: VehicleCreate) -> Vehicle:
         # Check location
-        location = (
-            self.db.query(Location)
-            .filter(
+        location = self.db.execute(
+            select(Location).where(
                 Location.id == payload.location_id,
                 Location.deleted_at.is_(None),
                 Location.is_active.is_(True),
             )
-            .first()
-        )
+        ).scalar_one_or_none()
 
         if not location:
             raise HTTPException(
@@ -60,15 +61,13 @@ class VehicleService:
             )
 
         # Check vehicle category
-        vehicle_category = (
-            self.db.query(VehicleCategory)
-            .filter(
+        vehicle_category = self.db.execute(
+            select(VehicleCategory).where(
                 VehicleCategory.id == payload.category_id,
                 VehicleCategory.deleted_at.is_(None),
                 VehicleCategory.is_active.is_(True),
             )
-            .first()
-        )
+        ).scalar_one_or_none()
 
         if not vehicle_category:
             raise HTTPException(
@@ -78,15 +77,13 @@ class VehicleService:
 
         # Check owner only when owner_id is provided
         if payload.owner_id is not None:
-            owner = (
-                self.db.query(User)
-                .filter(
+            owner = self.db.execute(
+                select(User).where(
                     User.id == payload.owner_id,
                     User.deleted_at.is_(None),
                     User.is_active.is_(True),
                 )
-                .first()
-            )
+            ).scalar_one_or_none()
 
             if not owner:
                 raise HTTPException(
@@ -114,14 +111,12 @@ class VehicleService:
         vehicle_id: uuid.UUID,
         payload: VehicleUpdate,
     ) -> Vehicle:
-        vehicle = (
-            self.db.query(Vehicle)
-            .filter(
+        vehicle = self.db.execute(
+            select(Vehicle).where(
                 Vehicle.id == vehicle_id,
                 Vehicle.deleted_at.is_(None),
             )
-            .first()
-        )
+        ).scalar_one_or_none()
 
         if not vehicle:
             raise HTTPException(
@@ -139,15 +134,13 @@ class VehicleService:
 
         # Validate location if it is being changed
         if "location_id" in update_data:
-            location = (
-                self.db.query(Location)
-                .filter(
+            location = self.db.execute(
+                select(Location).where(
                     Location.id == update_data["location_id"],
                     Location.deleted_at.is_(None),
                     Location.is_active.is_(True),
                 )
-                .first()
-            )
+            ).scalar_one_or_none()
 
             if not location:
                 raise HTTPException(
@@ -157,15 +150,13 @@ class VehicleService:
 
         # Validate category if it is being changed
         if "category_id" in update_data:
-            vehicle_category = (
-                self.db.query(VehicleCategory)
-                .filter(
+            vehicle_category = self.db.execute(
+                select(VehicleCategory).where(
                     VehicleCategory.id == update_data["category_id"],
                     VehicleCategory.deleted_at.is_(None),
                     VehicleCategory.is_active.is_(True),
                 )
-                .first()
-            )
+            ).scalar_one_or_none()
 
             if not vehicle_category:
                 raise HTTPException(
@@ -175,15 +166,13 @@ class VehicleService:
 
         # Validate owner if it is being changed
         if "owner_id" in update_data and update_data["owner_id"] is not None:
-            owner = (
-                self.db.query(User)
-                .filter(
+            owner = self.db.execute(
+                select(User).where(
                     User.id == update_data["owner_id"],
                     User.deleted_at.is_(None),
                     User.is_active.is_(True),
                 )
-                .first()
-            )
+            ).scalar_one_or_none()
 
             if not owner:
                 raise HTTPException(
@@ -197,6 +186,7 @@ class VehicleService:
 
             self.db.commit()
             self.db.refresh(vehicle)
+
         except SQLAlchemyError:
             self.db.rollback()
             raise HTTPException(
@@ -207,14 +197,12 @@ class VehicleService:
         return vehicle
 
     def delete_vehicle(self, vehicle_id: uuid.UUID) -> None:
-        vehicle = (
-            self.db.query(Vehicle)
-            .filter(
+        vehicle = self.db.execute(
+            select(Vehicle).where(
                 Vehicle.id == vehicle_id,
                 Vehicle.deleted_at.is_(None),
             )
-            .first()
-        )
+        ).scalar_one_or_none()
 
         if not vehicle:
             raise HTTPException(
@@ -225,6 +213,7 @@ class VehicleService:
         try:
             vehicle.deleted_at = datetime.now(timezone.utc)
             self.db.commit()
+
         except SQLAlchemyError:
             self.db.rollback()
             raise HTTPException(
@@ -233,16 +222,16 @@ class VehicleService:
             )
 
     async def update_vehicle_image(
-        self, vehicle_id: uuid.UUID, file: UploadFile
+        self,
+        vehicle_id: uuid.UUID,
+        file: UploadFile,
     ) -> VehicleImage:
-        vehicle = (
-            self.db.query(Vehicle)
-            .filter(
+        vehicle = self.db.execute(
+            select(Vehicle).where(
                 Vehicle.id == vehicle_id,
                 Vehicle.deleted_at.is_(None),
             )
-            .first()
-        )
+        ).scalar_one_or_none()
 
         if not vehicle:
             raise HTTPException(
@@ -251,17 +240,16 @@ class VehicleService:
             )
 
         result = await upload_image(file)
+
         # Get the last image sort order
         last_image = self.db.scalar(
             select(VehicleImage)
-            .where(
-                VehicleImage.vehicle_id == vehicle_id,
-            )
+            .where(VehicleImage.vehicle_id == vehicle_id)
             .order_by(VehicleImage.sort_order.desc())
         )
 
-        # Calculate the sort order for the new image
         sort_order = last_image.sort_order + 1 if last_image else 0
+
         vehicle_image = VehicleImage(
             vehicle_id=vehicle_id,
             image_url=result["url"],
@@ -272,10 +260,13 @@ class VehicleService:
             self.db.add(vehicle_image)
             self.db.commit()
             self.db.refresh(vehicle_image)
+
             return vehicle_image
+
         except SQLAlchemyError:
             self.db.rollback()
             delete_image(result["url"])
+
             raise HTTPException(
                 status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
                 detail="Failed to update vehicle image",

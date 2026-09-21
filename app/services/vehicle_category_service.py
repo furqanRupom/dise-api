@@ -1,18 +1,26 @@
 import uuid
+from collections.abc import Sequence
 from datetime import datetime, timezone
 
 from fastapi import HTTPException, status
+from sqlalchemy import select
 from sqlalchemy.orm import Session
 
 from app.models import VehicleCategory
-from app.schemas.vehicle_category import VehicleCategoryCreate, VehicleCategoryUpdate
+from app.schemas.vehicle_category import (
+    VehicleCategoryCreate,
+    VehicleCategoryUpdate,
+)
 
 
 class VehicleCategoryService:
     def __init__(self, db: Session):
         self.db = db
 
-    def create_vehicle_category(self, payload: VehicleCategoryCreate):
+    def create_vehicle_category(
+        self,
+        payload: VehicleCategoryCreate,
+    ) -> VehicleCategory:
         vehicle_category = VehicleCategory(**payload.model_dump())
 
         self.db.add(vehicle_category)
@@ -21,26 +29,27 @@ class VehicleCategoryService:
 
         return vehicle_category
 
-    def get_vehicle_categories(self):
-        return (
-            self.db.query(VehicleCategory)
-            .filter(
+    def get_vehicle_categories(self) -> Sequence[VehicleCategory]:
+        result = self.db.execute(
+            select(VehicleCategory).where(
                 VehicleCategory.is_active.is_(True),
                 VehicleCategory.deleted_at.is_(None),
             )
-            .all()
         )
 
-    def get_vehicle_category(self, vehicle_category_id: uuid.UUID):
-        vehicle_category = (
-            self.db.query(VehicleCategory)
-            .filter(
+        return result.scalars().all()
+
+    def get_vehicle_category(
+        self,
+        vehicle_category_id: uuid.UUID,
+    ) -> VehicleCategory:
+        vehicle_category = self.db.execute(
+            select(VehicleCategory).where(
                 VehicleCategory.id == vehicle_category_id,
                 VehicleCategory.is_active.is_(True),
                 VehicleCategory.deleted_at.is_(None),
             )
-            .first()
-        )
+        ).scalar_one_or_none()
 
         if not vehicle_category:
             raise HTTPException(
@@ -54,15 +63,13 @@ class VehicleCategoryService:
         self,
         vehicle_category_id: uuid.UUID,
         payload: VehicleCategoryUpdate,
-    ):
-        vehicle_category = (
-            self.db.query(VehicleCategory)
-            .filter(
+    ) -> VehicleCategory:
+        vehicle_category = self.db.execute(
+            select(VehicleCategory).where(
                 VehicleCategory.id == vehicle_category_id,
                 VehicleCategory.deleted_at.is_(None),
             )
-            .first()
-        )
+        ).scalar_one_or_none()
 
         if not vehicle_category:
             raise HTTPException(
@@ -80,15 +87,16 @@ class VehicleCategoryService:
 
         return vehicle_category
 
-    def delete_vehicle_category(self, vehicle_category_id: uuid.UUID):
-        vehicle_category = (
-            self.db.query(VehicleCategory)
-            .filter(
+    def delete_vehicle_category(
+        self,
+        vehicle_category_id: uuid.UUID,
+    ) -> VehicleCategory:
+        vehicle_category = self.db.execute(
+            select(VehicleCategory).where(
                 VehicleCategory.id == vehicle_category_id,
                 VehicleCategory.deleted_at.is_(None),
             )
-            .first()
-        )
+        ).scalar_one_or_none()
 
         if not vehicle_category:
             raise HTTPException(
@@ -103,15 +111,16 @@ class VehicleCategoryService:
 
         return vehicle_category
 
-    def toggle_vehicle_category(self, vehicle_category_id: uuid.UUID):
-        vehicle_category = (
-            self.db.query(VehicleCategory)
-            .filter(
+    def toggle_vehicle_category(
+        self,
+        vehicle_category_id: uuid.UUID,
+    ) -> VehicleCategory:
+        vehicle_category = self.db.execute(
+            select(VehicleCategory).where(
                 VehicleCategory.id == vehicle_category_id,
                 VehicleCategory.deleted_at.is_(None),
             )
-            .first()
-        )
+        ).scalar_one_or_none()
 
         if not vehicle_category:
             raise HTTPException(

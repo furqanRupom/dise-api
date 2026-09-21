@@ -1,4 +1,5 @@
 import uuid
+from collections.abc import Sequence
 from datetime import datetime, timezone
 
 from fastapi import HTTPException, status
@@ -13,96 +14,90 @@ class LocationService:
     def __init__(self, db: Session):
         self.db = db
 
-    """
-    Creates a new location in the database.
-    """
-
     def create_location(
         self,
         payload: LocationCreate,
-    ):
+    ) -> Location:
         location = Location(**payload.model_dump())
+
         self.db.add(location)
         self.db.commit()
         self.db.refresh(location)
-        return location
 
-    """
-    Updates an existing location in the database.
-    """
+        return location
 
     def update_location(
         self,
         location_id: uuid.UUID,
         payload: LocationUpdate,
-    ):
-        location = (
-            self.db.query(Location)
-            .filter(
+    ) -> Location:
+        location = self.db.execute(
+            select(Location).where(
                 Location.id == location_id,
                 Location.deleted_at.is_(None),
                 Location.is_active.is_(True),
             )
-            .first()
-        )
+        ).scalar_one_or_none()
+
         if not location:
             raise HTTPException(
-                status_code=status.HTTP_404_NOT_FOUND, detail="Location not found"
+                status_code=status.HTTP_404_NOT_FOUND,
+                detail="Location not found",
             )
 
         update_data = payload.model_dump(exclude_unset=True)
+
         for key, value in update_data.items():
             setattr(location, key, value)
+
         self.db.commit()
         self.db.refresh(location)
+
         return location
 
-    """
-    Retrieves all locations.
-    """
-
-    def get_location(
-        self,
-    ):
+    def get_locations(self) -> Sequence[Location]:
         result = self.db.execute(
             select(Location)
-            .where(Location.deleted_at.is_(None), Location.is_active.is_(True))
+            .where(
+                Location.deleted_at.is_(None),
+                Location.is_active.is_(True),
+            )
             .order_by(Location.created_at)
         )
-        return result.scalars()
 
-    """
-    Retrieves a location by its ID.
-    """
+        return result.scalars().all()
 
     def get_location_by_id(
         self,
         location_id: uuid.UUID,
-    ):
-        location = (
-            self.db.query(Location)
-            .filter(Location.id == location_id, Location.deleted_at.is_(None))
-            .first()
-        )
-        return location
+    ) -> Location | None:
+        return self.db.execute(
+            select(Location).where(
+                Location.id == location_id,
+                Location.deleted_at.is_(None),
+            )
+        ).scalar_one_or_none()
 
     def delete_location(
         self,
         location_id: uuid.UUID,
-    ):
-        """
-        Deletes a location by its ID.
-        """
-        location = (
-            self.db.query(Location)
-            .filter(Location.id == location_id, Location.deleted_at.is_(None))
-            .first()
-        )
-        if location:
-            location.deleted_at = datetime.now(timezone.utc)
-            self.db.commit()
-            self.db.refresh(location)
-            return location
-        raise HTTPException(
-            status_code=status.HTTP_404_NOT_FOUND, detail="Location not found"
-        )
+    ) -> Location:
+        location = self.db.execute(
+            select(Location).where(
+                Location.id == location_id,
+                Location.deleted_at.is_(None),
+            )
+        ).scalar_one_or_none()
+
+        if not location:
+            raise HTTPException(
+                status_code=status.HTTP_404_NOT_FOUND,
+                detail="Location not found",
+            )
+
+        location.deleted_at = datetime.now(timezone.utc)
+
+        self.db.commit()
+        self.db.refresh(location)
+
+        return location
