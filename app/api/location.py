@@ -43,7 +43,7 @@ async def get_location(
     current_user: Annotated[User, Depends(require_admin)],
 ):
     location = LocationService(db)
-    return location.get_location()
+    return location.get_locations()
 
 
 @router.get("/{location_id}", response_model=LocationResponse)
