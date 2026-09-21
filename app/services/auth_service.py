@@ -3,6 +3,7 @@ import uuid
 import jwt
 from fastapi import BackgroundTasks, HTTPException, Response, status
 from redis.asyncio import Redis
+from sqlalchemy import select
 from sqlalchemy.orm import Session
 from starlette.status import HTTP_401_UNAUTHORIZED
 
@@ -33,38 +34,34 @@ class AuthService:
         self.redis = redis
         self.redis_service = RedisService(redis)
 
-    def find_by_id(self, id: uuid.UUID):
-        user = (
-            self.db.query(User).filter(User.id == id, User.deleted_at.is_(None)).first()
-        )
+    def find_by_id(self, user_id: uuid.UUID):
+        user = self.db.execute(
+            select(User).where(User.id == user_id, User.deleted_at.is_(None))
+        ).scalar_one_or_none()
         if not user:
             raise HTTPException(
                 status_code=status.HTTP_404_NOT_FOUND,
-                detail="User not exit",
+                detail="User does not exist",
             )
         return user
 
     def find_by_email(self, email: str):
-        user = (
-            self.db.query(User)
-            .filter(User.email == email, User.deleted_at.is_(None))
-            .first()
-        )
+        user = self.db.execute(
+            select(User).where(User.email == email, User.deleted_at.is_(None))
+        ).scalar_one_or_none()
         if not user:
             raise HTTPException(
                 status_code=status.HTTP_404_NOT_FOUND,
-                detail="User not exit",
+                detail="User does not exist",
             )
         return user
 
     async def register(
         self, register: Register, background_tasks: BackgroundTasks
     ) -> RegisterResponse:
-        is_exit = (
-            self.db.query(User)
-            .filter(User.email == register.email, User.deleted_at.is_(None))
-            .first()
-        )
+        is_exit = self.db.execute(
+            select(User).where(User.email == register.email, User.deleted_at.is_(None))
+        ).scalar_one_or_none()
         if is_exit:
             raise HTTPException(
                 status_code=status.HTTP_409_CONFLICT,
@@ -127,11 +124,7 @@ class AuthService:
     async def verification_otp(
         self, email: str, background_tasks: BackgroundTasks
     ) -> bool:
-        user = self.db.query(User).filter(User.email == email).first()
-        if not user:
-            raise HTTPException(
-                status_code=status.HTTP_404_NOT_FOUND, detail="User not found"
-            )
+        _ = self.find_by_email(email)
 
         await self.redis_service.check_rate_limit(email)
         otp = generate_otp()
@@ -141,11 +134,7 @@ class AuthService:
 
     async def verify_email(self, email: str, otp: str) -> bool:
         await self.redis_service.verify_otp(email, otp)
-        user = self.db.query(User).filter(User.email == email).first()
-        if not user:
-            raise HTTPException(
-                status_code=status.HTTP_404_NOT_FOUND, detail="User not found"
-            )
+        user = self.find_by_email(email)
 
         user.is_verified = True
         user.is_active = True
@@ -217,9 +206,7 @@ class AuthService:
     async def forgot_password(
         self, email: str, background_tasks: BackgroundTasks
     ) -> bool:
-        user = self.db.query(User).filter(User.email == email).first()
-        if not user:
-            raise HTTPException(status_code=404, detail="User not found")
+        _ = self.find_by_email(email)
 
         otp = generate_otp()
         await self.redis_service.store_otp(email, otp)
@@ -229,9 +216,7 @@ class AuthService:
         return True
 
     async def reset_password(self, payload: ResetPassword) -> bool:
-        user = self.db.query(User).filter(User.email == payload.email).first()
-        if not user:
-            raise HTTPException(status_code=404, detail="User not found")
+        user = self.find_by_email(payload.email)
 
         if not verify_password(payload.current_password, user.password):
             raise HTTPException(status_code=400, detail="Invalid current password")
