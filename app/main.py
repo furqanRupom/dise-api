@@ -32,11 +32,6 @@ async def lifespan(app: FastAPI):
 
     logger.info("Shutting down Dise API...")
 
-    # Clean up resources here
-    # Example:
-    # await disconnect_redis()
-    # await disconnect_database()
-
 
 app = FastAPI(
     title="Dise API",
