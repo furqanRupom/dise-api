@@ -367,7 +367,7 @@ class BookingService:
         result = self.db.execute(
             select(Booking).where(
                 Booking.status == BookingStatus.pending_approval,
-                Booking.approval_deadline.is_(None),
+                Booking.approval_deadline.is_not(None),
                 Booking.approval_deadline <= now,
                 Booking.deleted_at.is_(None),
             )
@@ -386,7 +386,7 @@ class BookingService:
                 from_status=BookingStatus.pending_approval.value,
                 to_status=BookingStatus.expired.value,
                 changed_by=None,
-                reason="Booking approval deadline expired ",
+                reason="Booking approval deadline expired",
             )
             self.db.add(history)
 
