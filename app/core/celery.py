@@ -24,6 +24,12 @@ celery_app.conf.update(
     task_acks_late=True,
     # Re-queue tasks if worker crashes mid-execution
     task_reject_on_worker_lost=True,
+    beat_schedule={
+        "expire_pending_approvals_every_minute": {
+            "task": "bookings.expire_pending_approvals",
+            "schedule": 60.0,
+        }
+    },
 )
 
 celery_app.autodiscover_tasks(["app.tasks"])
