@@ -118,6 +118,6 @@ class RefundPolicyService:
 
         for tier in tiers:
             if hours_until_pickup >= tier.hours_before_pickup:
-                return Decimal(tier.refund_percentage), tier.id
+                return tier.refund_percentage, tier.id
 
         return Decimal("0.00"), None

@@ -1,6 +1,7 @@
 import uuid
+from decimal import Decimal
 
-from sqlalchemy import Boolean, Integer, Numeric
+from sqlalchemy import Boolean, CheckConstraint, Integer, Numeric
 from sqlalchemy.orm import Mapped, mapped_column
 
 from app.db.database import Base
@@ -18,5 +19,16 @@ class RefundPolicyTier(Base, TimestampMixin, SoftDeleteMixin):
 
     id: Mapped[uuid.UUID] = mapped_column(primary_key=True, default=uuid.uuid4)
     hours_before_pickup: Mapped[int] = mapped_column(Integer, nullable=False)
-    refund_percentage: Mapped[float] = mapped_column(Numeric(5, 2), nullable=False)
+    refund_percentage: Mapped[Decimal] = mapped_column(Numeric(5, 2), nullable=False)
     is_active: Mapped[bool] = mapped_column(Boolean, nullable=False, default=True)
+
+    __table_args__ = (
+        CheckConstraint(
+            "refund_percentage >= 0 AND refund_percentage <= 100",
+            name="ck_refund_percentage_range",
+        ),
+        CheckConstraint(
+            "hours_before_pickup >= 0",
+            name="ck_hours_before_pickup_non_negative",
+        ),
+    )

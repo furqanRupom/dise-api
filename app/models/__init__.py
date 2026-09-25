@@ -48,6 +48,7 @@ from app.models.notifications import Notification
 
 # --- everything else (only TYPE_CHECKING-guarded refs back to Booking) ---
 from app.models.payments import Payment
+from app.models.refund_policy import RefundPolicyTier
 from app.models.reviews import Review
 from app.models.user import User
 from app.models.vehicle import Vehicle, VehicleCategory, VehicleImage
@@ -74,6 +75,7 @@ __all__ = [
     "Payment",
     "PaymentStatus",
     "PaymentType",
+    "RefundPolicyTier",
     "ReportType",
     "Review",
     "TransmissionType",
