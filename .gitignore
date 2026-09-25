@@ -120,3 +120,8 @@ Thumbs.db
 PROJECT_INIT_PLAN.md
 roadmap.txt
 roadmap.md
+
+# Celery Beat
+celerybeat-schedule
+celerybeat-schedule.*
+celerybeat-schedule-*

@@ -240,6 +240,3 @@ async def reject_booking(
 
     booking_service = BookingService(db)
     return booking_service.reject_booking(booking_id, current_user.id, payload.reason)
-
-
-# TODO : we going to work on Rejection (so it will handle in background tasks we gonna use celery for that)
