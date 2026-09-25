@@ -637,6 +637,3 @@ class BookingService:
             )
 
         return booking
-
-
-""" We are going to work today in expiration with celery """
