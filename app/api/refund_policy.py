@@ -72,7 +72,7 @@ async def quote_refund(
     payload: RefundQuoteRequest,
 ):
     service = RefundPolicyService(db)
-    pct, tier_id = await service.compute_refund_percentage(payload.hours_until_pickup)
+    pct, tier_id = service.compute_refund_percentage(payload.hours_until_pickup)
     return RefundQuoteResponse(
         hours_until_pickup=payload.hours_until_pickup,
         refund_percentage=pct,
