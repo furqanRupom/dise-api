@@ -16,6 +16,7 @@ from app.core.dependencies import require_admin_or_staff, require_user
 from app.db import get_db
 from app.models.user import User
 from app.schemas.booking import (
+    BookingCancelRequest,
     BookingCreate,
     BookingListParams,
     BookingListResponse,
@@ -23,6 +24,7 @@ from app.schemas.booking import (
     BookingResponse,
 )
 from app.services.booking_service import BookingService
+from app.services.refund_policy_service import RefundPolicyService
 
 router = APIRouter(
     prefix="/v1/booking",
@@ -240,3 +242,20 @@ async def reject_booking(
 
     booking_service = BookingService(db)
     return booking_service.reject_booking(booking_id, current_user.id, payload.reason)
+
+
+@router.post("/{booking_id}/cancel")
+async def cancel_booking(
+    booking_id: uuid.UUID,
+    payload: BookingCancelRequest,
+    db: Annotated[Session, Depends(get_db)],
+    current_user: Annotated[User, Depends(require_user)],
+):
+    """Cancel a booking for current Customer"""
+
+    booking_service = BookingService(db)
+    refund_service = RefundPolicyService(db)
+
+    return booking_service.cancel_booking(
+        booking_id, current_user.id, payload.reason, refund_service
+    )

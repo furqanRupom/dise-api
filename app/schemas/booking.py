@@ -115,3 +115,7 @@ class BookingListResponse(BaseModel):
 
 class BookingRejectRequest(BaseModel):
     reason: str = Field(..., min_length=1, max_length=500)
+
+
+class BookingCancelRequest(BaseModel):
+    reason: str = Field(..., min_length=1, max_length=500)
