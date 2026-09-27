@@ -737,3 +737,6 @@ def cancel_booking(
 
     self.db.refresh(booking)
     return booking
+
+
+"""Today we are going to work on Phase 4 of booking"""
