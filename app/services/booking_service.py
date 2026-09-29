@@ -8,7 +8,7 @@ from fastapi import HTTPException, status
 from sqlalchemy import func, select
 from sqlalchemy.orm import Session
 from starlette.status import HTTP_404_NOT_FOUND
-
+from sqlalchemy.exc import SQLAlchemyError
 from app.models import BookingStatusHistory, Payment
 from app.models.booking import Booking
 from app.models.enums import BookingStatus, PaymentStatus, PaymentType
@@ -648,7 +648,7 @@ class BookingService:
     ) -> Booking:
         """Cancel a booking requested by its customer"""
 
-        booking = self.get_customer_booking(customer_id, booking_id, for_update=True)
+        booking = self.get_customer_booking(customer_id, booking_id)
 
         cancellable_statuses = {
             BookingStatus.pending_approval,
@@ -731,9 +731,12 @@ class BookingService:
 
         try:
             self.db.commit()
-        except Exception:
+        except SQLAlchemyError: 
             self.db.rollback()
-        raise
+            raise HTTPException(
+                status_code=status.HTTP_400_BAD_REQUEST,
+                detail="Failed to cancel booking"
+            )
 
         self.db.refresh(booking)
         return booking
