@@ -639,44 +639,43 @@ class BookingService:
 
         return booking
 
+    def cancel_booking(
+        self,
+        booking_id: uuid.UUID,
+        customer_id: uuid.UUID,
+        refund_service: RefundPolicyService,
+        reason: str | None = None,
+    ) -> Booking:
+        """Cancel a booking requested by its customer"""
 
-def cancel_booking(
-    self,
-    booking_id: uuid.UUID,
-    customer_id: uuid.UUID,
-    refund_service: RefundPolicyService,
-    reason: str | None = None,
-) -> Booking:
-    """Cancel a booking requested by its customer"""
+        booking = self.get_customer_booking(customer_id, booking_id, for_update=True)
 
-    booking = self.get_customer_booking(customer_id, booking_id, for_update=True)
+        cancellable_statuses = {
+            BookingStatus.pending_approval,
+            BookingStatus.pending_payment,
+            BookingStatus.confirmed,
+        }
 
-    cancellable_statuses = {
-        BookingStatus.pending_approval,
-        BookingStatus.pending_payment,
-        BookingStatus.confirmed,
-    }
+        if booking.status not in cancellable_statuses:
+            raise HTTPException(
+                status_code=status.HTTP_409_CONFLICT,
+                detail=f"Booking cannot be cancelled while in {booking.status.value} status",
+            )
 
-    if booking.status not in cancellable_statuses:
-        raise HTTPException(
-            status_code=status.HTTP_409_CONFLICT,
-            detail=f"Booking cannot be cancelled while in {booking.status.value} status",
-        )
+        prev_status = booking.status
 
-    prev_status = booking.status
+        # Only a `confirmed` booking has an actual captured payment to
+        # refund, and only a `confirmed` booking has an actual gateway-side
+        # deposit hold to release (deposit authorization happens on
+        # confirmation in Phase 6). pending_approval / pending_payment
+        # bookings were never charged and never had a deposit placed, so
+        # both calculations are skipped entirely for those statuses.
+        refund_percentage = Decimal("0.00")
+        refund_tier_id: uuid.UUID | None = None
+        refund_amount = Decimal("0.00")
 
-    # Only a `confirmed` booking has an actual captured payment to
-    # refund, and only a `confirmed` booking has an actual gateway-side
-    # deposit hold to release (deposit authorization happens on
-    # confirmation in Phase 6). pending_approval / pending_payment
-    # bookings were never charged and never had a deposit placed, so
-    # both calculations are skipped entirely for those statuses.
-    refund_percentage = Decimal("0.00")
-    refund_tier_id: uuid.UUID | None = None
-    refund_amount = Decimal("0.00")
-
-    if prev_status == BookingStatus.confirmed:
-        now = datetime.now(timezone.utc)
+        if prev_status == BookingStatus.confirmed:
+            now = datetime.now(timezone.utc)
 
         pickup_at = datetime.combine(booking.start_date, time.min, tzinfo=timezone.utc)
         hours_until_pickup = max(0, int((pickup_at - now).total_seconds() // 3600))
@@ -688,57 +687,56 @@ def cancel_booking(
             booking.total_price * refund_percentage / Decimal("100")
         ).quantize(Decimal("0.01"))
 
-    booking.status = BookingStatus.cancelled
-    booking.approval_deadline = None
+        booking.status = BookingStatus.cancelled
+        booking.approval_deadline = None
 
-    cancellation_reason = reason.strip() if reason else None
-    history_reason = cancellation_reason or "Booking cancelled by customer"
-    if refund_tier_id is not None:
-        history_reason += f" (refund tier {refund_tier_id}, {refund_percentage}%)"
+        cancellation_reason = reason.strip() if reason else None
+        history_reason = cancellation_reason or "Booking cancelled by customer"
+        if refund_tier_id is not None:
+            history_reason += f" (refund tier {refund_tier_id}, {refund_percentage}%)"
 
-    history = BookingStatusHistory(
-        booking=booking,
-        from_status=prev_status.value,
-        to_status=BookingStatus.cancelled.value,
-        changed_by=customer_id,
-        reason=history_reason,
-    )
-    self.db.add(history)
-
-    if refund_amount > Decimal("0.00"):
-        refund_payment = Payment(
-            booking_id=booking.id,
-            type=PaymentType.refund,
-            amount=refund_amount,
-            currency=booking.currency,
-            status=PaymentStatus.pending,
-            idempotency_key=f"refund:{booking.id}",
+        history = BookingStatusHistory(
+            booking=booking,
+            from_status=prev_status.value,
+            to_status=BookingStatus.cancelled.value,
+            changed_by=customer_id,
+            reason=history_reason,
         )
-        self.db.add(refund_payment)
+        self.db.add(history)
 
-    if prev_status == BookingStatus.confirmed and booking.deposit_hold_amount > Decimal(
-        "0.00"
-    ):
-        deposit_release_payment = Payment(
-            booking_id=booking.id,
-            type=PaymentType.deposit_release,
-            amount=booking.deposit_hold_amount,
-            currency=booking.currency,
-            status=PaymentStatus.pending,
-            idempotency_key=f"deposit_release:{booking.id}",
-        )
-        self.db.add(deposit_release_payment)
+        if refund_amount > Decimal("0.00"):
+            refund_payment = Payment(
+                booking_id=booking.id,
+                type=PaymentType.refund,
+                amount=refund_amount,
+                currency=booking.currency,
+                status=PaymentStatus.pending,
+                idempotency_key=f"refund:{booking.id}",
+            )
+            self.db.add(refund_payment)
 
-    try:
-        self.db.commit()
-    except Exception:
-        self.db.rollback()
+        if (
+            prev_status == BookingStatus.confirmed
+            and booking.deposit_hold_amount > Decimal("0.00")
+        ):
+            deposit_release_payment = Payment(
+                booking_id=booking.id,
+                type=PaymentType.deposit_release,
+                amount=booking.deposit_hold_amount,
+                currency=booking.currency,
+                status=PaymentStatus.pending,
+                idempotency_key=f"deposit_release:{booking.id}",
+            )
+            self.db.add(deposit_release_payment)
+
+        try:
+            self.db.commit()
+        except Exception:
+            self.db.rollback()
         raise
 
-    self.db.refresh(booking)
-    return booking
-
+        self.db.refresh(booking)
+        return booking
 
 
 """ We are going to work on phase 4 - on booking"""
-
