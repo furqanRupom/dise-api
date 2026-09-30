@@ -12,7 +12,7 @@ from starlette.status import HTTP_404_NOT_FOUND
 
 from app.models import BookingStatusHistory, Payment
 from app.models.booking import Booking
-from app.models.enums import BookingStatus, PaymentStatus, PaymentType
+from app.models.enums import BookingStatus, PaymentStatus, PaymentType, VehicleStatus
 from app.models.location import Location
 from app.models.maintenance import MaintenanceBlock
 from app.models.vehicle import Vehicle
@@ -138,11 +138,13 @@ class BookingService:
         These periods do NOT overlap.
         """
         result = self.db.execute(
-            select(MaintenanceBlock.id).where(
+            select(MaintenanceBlock.id)
+            .where(
                 MaintenanceBlock.vehicle_id == vehicle_id,
                 MaintenanceBlock.start_date < end_date,
                 MaintenanceBlock.end_date > start_date,
             )
+            .limit(1)
         )
 
         conflict = result.scalar_one_or_none()
@@ -200,6 +202,13 @@ class BookingService:
 
         # Make sure the requested vehicle exists and is active.
         vehicle = self.get_vehicle(payload.vehicle_id)
+        today = datetime.now(timezone.utc).date()
+
+        if vehicle.status == VehicleStatus.retired:
+            raise HTTPException(
+                status_code=status.HTTP_409_CONFLICT,
+                detail="vehicle is not available for booking.",
+            )
 
         # Make sure both requested locations exist and are active.
         pickup_location = self.get_location(payload.pickup_location_id)
@@ -210,6 +219,12 @@ class BookingService:
             raise HTTPException(
                 status_code=status.HTTP_400_BAD_REQUEST,
                 detail="End date must be after start date",
+            )
+
+        if payload.start_date < today:
+            raise HTTPException(
+                status_code=status.HTTP_400_BAD_REQUEST,
+                detail="Start date cannot be in past",
             )
 
         # A vehicle cannot be rented while it is blocked for maintenance.
@@ -283,7 +298,7 @@ class BookingService:
     def approve_booking(self, booking_id: uuid.UUID, changed_by: uuid.UUID) -> Booking:
         """Approve a pending booking before its approval deadline."""
 
-        booking = self.get_booking(booking_id)
+        booking = self.get_booking(booking_id, for_update=True)
 
         if booking.status != BookingStatus.pending_approval:
             raise HTTPException(
@@ -316,6 +331,7 @@ class BookingService:
             self.db.commit()
         except Exception:
             self.db.rollback()
+            raise
 
         self.db.refresh(booking)
         return booking
@@ -323,7 +339,7 @@ class BookingService:
     def reject_booking(self, booking_id: uuid.UUID, changed_by: uuid.UUID, reason: str):
         """Reject a pending booking and record the rejection reason."""
 
-        booking = self.get_booking(booking_id)
+        booking = self.get_booking(booking_id, for_update=True)
 
         if booking.status != BookingStatus.pending_approval:
             raise HTTPException(
@@ -357,6 +373,7 @@ class BookingService:
             self.db.commit()
         except Exception:
             self.db.rollback()
+            raise
 
         self.db.refresh(booking)
         return booking
@@ -367,12 +384,14 @@ class BookingService:
         now = datetime.now(timezone.utc)
 
         result = self.db.execute(
-            select(Booking).where(
+            select(Booking)
+            .where(
                 Booking.status == BookingStatus.pending_approval,
                 Booking.approval_deadline.is_not(None),
                 Booking.approval_deadline <= now,
                 Booking.deleted_at.is_(None),
             )
+            .with_for_update(of=Booking, skip_locked=True)
         )
 
         bookings = list(result.scalars().all())
@@ -505,16 +524,21 @@ class BookingService:
         return bookings, total
 
     def get_customer_booking(
-        self, customer_id: uuid.UUID, booking_id: uuid.UUID
+        self,
+        customer_id: uuid.UUID,
+        booking_id: uuid.UUID,
+        for_update: bool = False,
     ) -> Booking:
-        """Get Specific Booking for customer"""
-        booking = self.db.execute(
-            select(Booking).where(
-                Booking.id == booking_id,
-                Booking.customer_id == customer_id,
-                Booking.deleted_at.is_(None),
-            )
-        ).scalar_one_or_none()
+        """Get a specific booking for a customer."""
+        stmt = select(Booking).where(
+            Booking.id == booking_id,
+            Booking.customer_id == customer_id,
+            Booking.deleted_at.is_(None),
+        )
+        if for_update:
+            stmt = stmt.with_for_update(of=Booking)
+
+        booking = self.db.execute(stmt).scalar_one_or_none()
 
         if not booking:
             raise HTTPException(
@@ -624,20 +648,19 @@ class BookingService:
 
         return bookings, total
 
-    def get_booking(self, booking_id: uuid.UUID) -> Booking:
-        """Get Specific Booking for Admin/staff"""
-        booking = self.db.execute(
-            select(Booking).where(
-                Booking.id == booking_id,
-                Booking.deleted_at.is_(None),
-            )
-        ).scalar_one()
+    def get_booking(self, booking_id: uuid.UUID, for_update: bool = False) -> Booking:
+        stmt = select(Booking).where(
+            Booking.id == booking_id,
+            Booking.deleted_at.is_(None),
+        )
+        if for_update:
+            stmt = stmt.with_for_update(of=Booking)
 
+        booking = self.db.execute(stmt).scalar_one_or_none()
         if not booking:
             raise HTTPException(
                 status_code=HTTP_404_NOT_FOUND, detail="Booking not found"
             )
-
         return booking
 
     def cancel_booking(
@@ -649,7 +672,7 @@ class BookingService:
     ) -> Booking:
         """Cancel a booking requested by its customer"""
 
-        booking = self.get_customer_booking(customer_id, booking_id)
+        booking = self.get_customer_booking(customer_id, booking_id, for_update=True)
 
         cancellable_statuses = {
             BookingStatus.pending_approval,
@@ -678,15 +701,17 @@ class BookingService:
         if prev_status == BookingStatus.confirmed:
             now = datetime.now(timezone.utc)
 
-        pickup_at = datetime.combine(booking.start_date, time.min, tzinfo=timezone.utc)
-        hours_until_pickup = max(0, int((pickup_at - now).total_seconds() // 3600))
+            pickup_at = datetime.combine(
+                booking.start_date, time.min, tzinfo=timezone.utc
+            )
+            hours_until_pickup = max(0, int((pickup_at - now).total_seconds() // 3600))
 
-        refund_percentage, refund_tier_id = refund_service.compute_refund_percentage(
-            hours_until_pickup
-        )
-        refund_amount = (
-            booking.total_price * refund_percentage / Decimal("100")
-        ).quantize(Decimal("0.01"))
+            refund_percentage, refund_tier_id = (
+                refund_service.compute_refund_percentage(hours_until_pickup)
+            )
+            refund_amount = (
+                booking.total_price * refund_percentage / Decimal("100")
+            ).quantize(Decimal("0.01"))
 
         booking.status = BookingStatus.cancelled
         booking.approval_deadline = None
