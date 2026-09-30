@@ -6,9 +6,10 @@ from decimal import Decimal
 
 from fastapi import HTTPException, status
 from sqlalchemy import func, select
+from sqlalchemy.exc import SQLAlchemyError
 from sqlalchemy.orm import Session
 from starlette.status import HTTP_404_NOT_FOUND
-from sqlalchemy.exc import SQLAlchemyError
+
 from app.models import BookingStatusHistory, Payment
 from app.models.booking import Booking
 from app.models.enums import BookingStatus, PaymentStatus, PaymentType
@@ -731,11 +732,11 @@ class BookingService:
 
         try:
             self.db.commit()
-        except SQLAlchemyError: 
+        except SQLAlchemyError:
             self.db.rollback()
             raise HTTPException(
                 status_code=status.HTTP_400_BAD_REQUEST,
-                detail="Failed to cancel booking"
+                detail="Failed to cancel booking",
             )
 
         self.db.refresh(booking)

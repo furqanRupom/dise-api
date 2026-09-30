@@ -257,5 +257,8 @@ async def cancel_booking(
     refund_service = RefundPolicyService(db)
 
     return booking_service.cancel_booking(
-        booking_id, current_user.id, payload.reason, refund_service
+        booking_id,
+        current_user.id,
+        refund_service,
+        payload.reason,
     )
