@@ -72,7 +72,9 @@ class Vehicle(Base, TimestampMixin, SoftDeleteMixin):
     status: Mapped[VehicleStatus] = mapped_column(
         Enum(VehicleStatus), default=VehicleStatus.available, nullable=False
     )
-    odometer_km: Mapped[int] = mapped_column(default=0)
+    odometer_km: Mapped[int] = mapped_column(
+        nullable=False, default=0, server_default="0"
+    )
 
     # selectin: vehicle listing/detail pages always show category + photos,
     # so these are eager-loaded in 2 extra batched queries instead of

@@ -9,6 +9,7 @@ from sqlalchemy import (
     SmallInteger,
     String,
     Text,
+    UniqueConstraint,
     func,
 )
 from sqlalchemy.orm import Mapped, mapped_column, relationship
@@ -27,7 +28,9 @@ class ConditionReport(Base):
     booking_id: Mapped[uuid.UUID] = mapped_column(
         ForeignKey("bookings.id", ondelete="CASCADE"), nullable=False, index=True
     )
-    type: Mapped[ReportType] = mapped_column(Enum(ReportType), nullable=False)
+    type: Mapped[ReportType] = mapped_column(
+        Enum(ReportType, name="reporttype"), nullable=False
+    )
     odometer_km: Mapped[int] = mapped_column(nullable=False)
     fuel_level_pct: Mapped[int] = mapped_column(SmallInteger, nullable=False)
     notes: Mapped[str | None] = mapped_column(Text)
@@ -37,11 +40,15 @@ class ConditionReport(Base):
     created_at: Mapped[datetime] = mapped_column(
         DateTime(timezone=True), server_default=func.now(), nullable=False
     )
+    booking: Mapped["Booking"] = relationship(back_populates="condition_reports")
     images: Mapped[list["ConditionReportImage"]] = relationship(
-        cascade="all, delete-orphan", lazy="selectin"
+        back_populates="report", cascade="all, delete-orphan", lazy="selectin"
     )
 
     __table_args__ = (
+        UniqueConstraint(
+            "booking_id", "type", name="uq_condition_reports_booking_type"
+        ),
         CheckConstraint(
             "fuel_level_pct BETWEEN 0 AND 100", name="ck_condition_reports_fuel"
         ),
@@ -65,3 +72,4 @@ class ConditionReportImage(Base):
     created_at: Mapped[datetime] = mapped_column(
         DateTime(timezone=True), server_default=func.now(), nullable=False
     )
+    report: Mapped["ConditionReport"] = relationship(back_populates="images")

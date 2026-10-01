@@ -67,7 +67,15 @@ class Booking(Base, TimestampMixin, SoftDeleteMixin):
     created_by: Mapped[uuid.UUID] = mapped_column(
         ForeignKey("users.id", ondelete="RESTRICT"), nullable=False
     )
-
+    # --- Phase 4: fleet operations (NEW) ---
+    actual_pickup_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True))
+    actual_return_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True))
+    checked_in_by: Mapped[uuid.UUID | None] = mapped_column(
+        ForeignKey("users.id", ondelete="RESTRICT")
+    )
+    checked_out_by: Mapped[uuid.UUID | None] = mapped_column(
+        ForeignKey("users.id", ondelete="RESTRICT")
+    )
     # lazy="selectin": these two are needed on almost every booking read
     # (list view, detail view, receipts...) so we eager-load them by
     # default in exactly 2 extra queries total instead of 1-per-row (N+1).
@@ -89,7 +97,7 @@ class Booking(Base, TimestampMixin, SoftDeleteMixin):
         back_populates="booking", uselist=False, cascade="all, delete-orphan"
     )
     condition_reports: Mapped[list["ConditionReport"]] = relationship(
-        cascade="all, delete-orphan"
+        back_populates="booking", cascade="all, delete-orphan"
     )
 
     __table_args__ = (

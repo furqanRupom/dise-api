@@ -18,7 +18,8 @@ class LicenseStatus(str, enum.Enum):
 
 class VehicleStatus(str, enum.Enum):
     available = "available"
-    booked = "booked"
+    rented = "rented"  # rented - physically out with our customer
+    booked = "booked"  # will be unused
     in_maintenance = "in_maintenance"
     retired = "retired"
 
