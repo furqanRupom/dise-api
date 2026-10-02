@@ -11,7 +11,7 @@ imageUrl = Annotated[
 ]
 
 
-class CondtionReportCreate(BaseModel):
+class ConditionReportCreate(BaseModel):
     """
     Payload for both check-in (pick up) and check-up (return)
     The Report Type is decided by endpoint never by client

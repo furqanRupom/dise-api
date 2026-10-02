@@ -20,12 +20,13 @@ from app.models import (
     Booking,
     BookingStatusHistory,
     ConditionReport,
+    User,
     Vehicle,
     VehicleStatus,
 )
 from app.models.condition_reports import ConditionReportImage
-from app.models.enums import BookingStatus, ReportType
-from app.schemas.condition_report import CondtionReportCreate
+from app.models.enums import BookingStatus, ReportType, UserRole
+from app.schemas.condition_report import ConditionReportCreate
 from app.services.booking_service import BookingService
 
 # TODO : Will moved to settings (and also we need to update it booking service layer as well)
@@ -112,7 +113,7 @@ class FleetService:
             raise
 
     def check_out(
-        self, booking_id: uuid.UUID, staff_id: uuid.UUID, payload: CondtionReportCreate
+        self, booking_id: uuid.UUID, staff_id: uuid.UUID, payload: ConditionReportCreate
     ):
         """
         Check-out(pick up) - Confirmed -> active
@@ -169,3 +170,74 @@ class FleetService:
         self._commit()
         self.db.refresh(booking)
         return booking
+
+    def check_in(
+        self, booking_id: uuid.UUID, staff_id: uuid.UUID, payload: ConditionReportCreate
+    ):
+        booking = self.booking_service.get_booking(booking_id, for_update=True)
+
+        if booking.status != BookingStatus.active:
+            raise HTTPException(
+                status_code=status.HTTP_409_CONFLICT,
+                detail="Only active bookings can be returned",
+            )
+
+        pickup_report = self._get_report(booking_id, ReportType.check_out)
+
+        if pickup_report is None:
+            raise HTTPException(
+                status_code=status.HTTP_409_CONFLICT,
+                detail="Check out condition report is missing",
+            )
+
+        if payload.odometer_km < pickup_report.odometer_km:
+            raise HTTPException(
+                status_code=status.HTTP_400_BAD_REQUEST,
+                detail="Return odometer cannot be lower than pickup odometer",
+            )
+
+        vehicle = self._lock_vehicle(booking.vehicle_id)
+
+        self._add_report(booking, ReportType.check_in, staff_id, payload)
+
+        now = datetime.now(timezone.utc)
+        booking.status = BookingStatus.completed
+        booking.actual_return_at = now
+        booking.checked_in_by = staff_id
+
+        # Don't overwrite in_maintenance / retired if something else set it.
+        if vehicle.status == VehicleStatus.rented:
+            vehicle.status = VehicleStatus.available
+
+        reason = "Vehicle returned"
+
+        today = business_today()
+
+        if today > booking.end_date:
+            # Late Fee is phase 6 : we just only recorded here
+            reason += " (late)"
+
+        self._add_history(
+            booking, BookingStatus.active, BookingStatus.completed, staff_id, reason
+        )
+
+        self._commit()
+        self.db.refresh(booking)
+        return booking
+
+    def list_reports(self, booking_id: uuid.UUID, user: User) -> list[ConditionReport]:
+        booking = self.booking_service.get_booking(booking_id)
+
+        # Customers may only see reports for their own bookings; answer 404
+        # (not 403) so booking ids can't be probed.
+        if user.role == UserRole.customer and booking.customer_id != user.id:
+            raise HTTPException(
+                status_code=status.HTTP_404_NOT_FOUND, detail="Booking not found"
+            )
+
+        result = self.db.execute(
+            select(ConditionReport)
+            .where(ConditionReport.booking_id == booking.id)
+            .order_by(ConditionReport.created_at.asc())
+        )
+        return list(result.scalars().all())
