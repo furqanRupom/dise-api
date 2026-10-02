@@ -7,6 +7,7 @@ from fastapi.middleware.cors import CORSMiddleware
 from app.api.auth import router as auth_router
 from app.api.booking import router as booking_router
 from app.api.coupon import router as coupon_router
+from app.api.fleet import router as fleet_router
 from app.api.location import router as location_router
 from app.api.refund_policy import router as refund_policy_router
 from app.api.user import router as user_router
@@ -72,6 +73,7 @@ app.include_router(vehicle_category_router)
 app.include_router(vehicle_router)
 app.include_router(refund_policy_router)
 app.include_router(booking_router)
+app.include_router(fleet_router)
 
 
 @app.get(
