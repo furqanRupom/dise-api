@@ -66,7 +66,7 @@ class FleetService:
         booking: Booking,
         report_type: ReportType,
         staff_id: uuid.UUID,
-        payload: CondtionReportCreate,
+        payload: ConditionReportCreate,
     ) -> ConditionReport:
 
         report = ConditionReport(
