@@ -236,7 +236,7 @@ class BookingService:
 
         # Calculate the price using the vehicle's current daily rate.
         base_price = self.calculate_base_price(
-            daily_rate=Decimal(str(vehicle.daily_rate)),
+            daily_rate=vehicle.daily_rate,
             start_date=payload.start_date,
             end_date=payload.end_date,
         )
