@@ -26,7 +26,7 @@ from app.models import (
 )
 from app.models.condition_reports import ConditionReportImage
 from app.models.enums import BookingStatus, ReportType, UserRole
-from app.schemas.condition_report import ConditionReportCreate
+from app.schemas.condition_reports import ConditionReportCreate
 from app.services.booking_service import BookingService
 
 # TODO : Will moved to settings (and also we need to update it booking service layer as well)
@@ -91,8 +91,8 @@ class FleetService:
     ):
         history = BookingStatusHistory(
             booking=booking,
-            from_status=from_status,
-            to_status=to_status,
+            from_status=from_status.value,
+            to_status=to_status.value,
             changed_by=changed_by,
             reason=reason,
         )

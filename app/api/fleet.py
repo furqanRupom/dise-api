@@ -9,7 +9,7 @@ from app.core.dependencies import get_current_active_user, require_staff
 from app.db import get_db
 from app.models.user import User
 from app.schemas.booking import BookingResponse
-from app.schemas.condition_report import ConditionReportCreate, ConditionReportRead
+from app.schemas.condition_reports import ConditionReportCreate, ConditionReportRead
 from app.services.fleet_service import FleetService
 
 router = APIRouter(prefix="/v1/booking", tags=["fleet"])

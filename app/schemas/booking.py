@@ -48,6 +48,12 @@ class BookingResponse(BaseModel):
     start_date: date
     end_date: date
 
+    actual_pickup_at: date | None
+    actual_return_at: date | None
+
+    checked_in_by: uuid.UUID | None
+    checked_out_by: uuid.UUID | None
+
     status: BookingStatus
 
     base_price: Decimal
