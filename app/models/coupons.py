@@ -1,5 +1,6 @@
 import uuid
 from datetime import datetime
+from decimal import Decimal
 
 from sqlalchemy import (
     Boolean,
@@ -29,7 +30,7 @@ class Coupon(Base, TimestampMixin, SoftDeleteMixin):
     discount_type: Mapped[DiscountType] = mapped_column(
         Enum(DiscountType), nullable=False
     )
-    discount_value: Mapped[float] = mapped_column(Numeric(10, 2), nullable=False)
+    discount_value: Mapped[Decimal] = mapped_column(Numeric(10, 2), nullable=False)
     max_usage: Mapped[int | None] = mapped_column()
     usage_count: Mapped[int] = mapped_column(default=0)
     valid_from: Mapped[datetime] = mapped_column(
@@ -45,6 +46,14 @@ class Coupon(Base, TimestampMixin, SoftDeleteMixin):
             "max_usage IS NULL OR max_usage > 0", name="ck_coupons_max_usage"
         ),
         CheckConstraint("usage_count >= 0", name="ck_coupons_usage_count"),
+        CheckConstraint(
+            "max_usage IS NULL OR usage_count <= max_usage",
+            name="ck_coupons_usage_within_limit",
+        ),
+        CheckConstraint(
+            "discount_type <> 'percentage' OR discount_value <= 100",
+            name="ck_coupons_percentage_max",
+        ),
     )
 
 
