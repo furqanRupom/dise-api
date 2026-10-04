@@ -768,4 +768,3 @@ class BookingService:
         return booking
 
 
-""" We are going to work on phase 4 - on booking"""
