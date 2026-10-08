@@ -1,8 +1,9 @@
+import uuid
 from datetime import datetime, timezone
 from decimal import ROUND_HALF_UP, Decimal
-from uuid
+
 from fastapi import HTTPException, status
-from sqlalchemy import delete, select, update
+from sqlalchemy import select, update
 from sqlalchemy.exc import IntegrityError
 from sqlalchemy.orm import Session
 
@@ -108,7 +109,7 @@ class CouponService:
 
     def update_coupon(
         self,
-        coupon_id: UUID,
+        coupon_id: uuid.UUID,
         payload: CouponUpdate,
     ):
         coupon = self.get_coupon(coupon_id)
@@ -169,7 +170,7 @@ class CouponService:
                 detail="Coupon could not be updated",
             )
 
-    def delete_coupon(self, coupon_id: UUID):
+    def delete_coupon(self, coupon_id: uuid.UUID):
         coupon = self.get_coupon(coupon_id)
 
         coupon.deleted_at = datetime.now(timezone.utc)
@@ -179,7 +180,7 @@ class CouponService:
 
         return coupon
 
-    def activate_coupon(self, coupon_id: UUID):
+    def activate_coupon(self, coupon_id: uuid.UUID):
         coupon = self.get_coupon(coupon_id)
 
         now = datetime.now(timezone.utc)
@@ -197,7 +198,7 @@ class CouponService:
 
         return coupon
 
-    def deactivate_coupon(self, coupon_id: UUID):
+    def deactivate_coupon(self, coupon_id: uuid.UUID):
         coupon = self.get_coupon(coupon_id)
 
         coupon.is_active = False
@@ -223,13 +224,23 @@ class CouponService:
         now = datetime.now(timezone.utc)
 
         if not coupon.is_active:
-            raise _bad_request("Invalid coupon code")
+            raise HTTPException(
+                status_code=status.HTTP_400_BAD_REQUEST, detail="Invalid coupon code"
+            )
         if now < coupon.valid_from:
-            raise _bad_request("Coupon is not valid yet")
+            raise HTTPException(
+                status_code=status.HTTP_400_BAD_REQUEST,
+                detail="Coupon is not valid yet",
+            )
         if now >= coupon.valid_to:
-            raise _bad_request("Coupon has expired")
+            raise HTTPException(
+                status_code=status.HTTP_400_BAD_REQUEST, detail="Coupon has expired"
+            )
         if coupon.max_usage is not None and coupon.usage_count >= coupon.max_usage:
-            raise _bad_request("Coupon usage limit has been reached")
+            raise HTTPException(
+                status_code=status.HTTP_400_BAD_REQUEST,
+                detail="Coupon usage limit has been reached",
+            )
 
         already_used = self.db.execute(
             select(func.count())
@@ -275,16 +286,14 @@ class CouponService:
     def release(self, booking: Booking) -> None:
         """Give the usage back.
 
-    Idempotent: only releases the coupon if a usage record exists.
-    """
+        Idempotent: only releases the coupon if a usage record exists.
+        """
         if booking.coupon_id is None:
             return
 
         usage = self.db.execute(
-        select(CouponUsage).where(
-            CouponUsage.booking_id == booking.id
-        )
-    ).scalar_one_or_none()
+            select(CouponUsage).where(CouponUsage.booking_id == booking.id)
+        ).scalar_one_or_none()
 
         if usage is None:
             return
@@ -292,13 +301,11 @@ class CouponService:
         self.db.delete(usage)
 
         self.db.execute(
-        update(Coupon)
-        .where(
-            Coupon.id == booking.coupon_id,
-            Coupon.usage_count > 0,
+            update(Coupon)
+            .where(
+                Coupon.id == booking.coupon_id,
+                Coupon.usage_count > 0,
+            )
+            .values(usage_count=Coupon.usage_count - 1)
+            .execution_options(synchronize_session=False)
         )
-        .values(
-            usage_count=Coupon.usage_count - 1
-        )
-        .execution_options(synchronize_session=False)
-    )
