@@ -3,7 +3,7 @@ from datetime import datetime, timezone
 from decimal import ROUND_HALF_UP, Decimal
 
 from fastapi import HTTPException, status
-from sqlalchemy import select, update
+from sqlalchemy import func, select, update
 from sqlalchemy.exc import IntegrityError
 from sqlalchemy.orm import Session
 
@@ -91,7 +91,7 @@ class CouponService:
                 detail="Coupon could not be created",
             )
 
-    def get_coupon(self, coupon_id: UUID):
+    def get_coupon(self, coupon_id: uuid.UUID):
         coupon = self.db.execute(
             select(Coupon).where(
                 Coupon.id == coupon_id,
