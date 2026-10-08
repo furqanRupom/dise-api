@@ -2,9 +2,10 @@ from datetime import datetime
 from decimal import Decimal
 from uuid import UUID
 
-from pydantic import BaseModel, ConfigDict
+from pydantic import BaseModel, ConfigDict, Field
 
 from app.models import DiscountType
+from app.models.enums import DiscountType
 
 
 class CouponCreate(BaseModel):
@@ -39,3 +40,17 @@ class CouponResponse(BaseModel):
     is_active: bool
 
     model_config = ConfigDict(from_attributes=True)
+
+
+class CouponValidateRequest(BaseModel):
+    code: str = Field(min_length=1, max_length=30)
+    base_price: Decimal = Field(gt=0)
+
+
+class CouponValidateResponse(BaseModel):
+    code: str
+    discount_type: DiscountType
+    discount_value: Decimal
+    base_price: Decimal
+    discount_amount: Decimal
+    final_price: Decimal

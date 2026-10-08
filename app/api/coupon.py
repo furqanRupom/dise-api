@@ -4,10 +4,15 @@ from uuid import UUID
 from fastapi import APIRouter, Depends
 from sqlalchemy.orm import Session
 
-from app.core.dependencies import require_admin
+from app.core.dependencies import get_current_active_user, require_admin
 from app.db import get_db
 from app.models import User
-from app.schemas.coupon import CouponCreate, CouponUpdate
+from app.schemas.coupon import (
+    CouponCreate,
+    CouponUpdate,
+    CouponValidateRequest,
+    CouponValidateResponse,
+)
 from app.services.coupon_service import CouponService
 
 router = APIRouter(
@@ -84,3 +89,36 @@ async def deactivate_coupon(
 ):
     coupon = CouponService(db)
     return coupon.deactivate_coupon(coupon_id)
+
+
+@router.post(
+    "/validate",
+    response_model=CouponValidateResponse,
+)
+def validate_coupon(
+    payload: CouponValidateRequest,
+    db: Annotated[Session, Depends(get_db)],
+    user: Annotated[User, Depends(get_current_active_user)],
+):
+    service = CouponService(db)
+
+    coupon = service.validate(
+        code=payload.code,
+        customer_id=user.id,
+    )
+
+    discount_amount = service.calculate_discount(
+        coupon=coupon,
+        base_price=payload.base_price,
+    )
+
+    final_price = payload.base_price - discount_amount
+
+    return CouponValidateResponse(
+        code=coupon.code,
+        discount_type=coupon.discount_type,
+        discount_value=coupon.discount_value,
+        base_price=payload.base_price,
+        discount_amount=discount_amount,
+        final_price=final_price,
+    )
