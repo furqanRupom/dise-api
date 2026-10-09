@@ -6,9 +6,9 @@ from decimal import Decimal
 
 from fastapi import HTTPException, status
 from sqlalchemy import func, select
-from sqlalchemy.exc import SQLAlchemyError
+from sqlalchemy.exc import IntegrityError, SQLAlchemyError
 from sqlalchemy.orm import Session
-from starlette.status import HTTP_404_NOT_FOUND
+from starlette.status import HTTP_404_NOT_FOUND, HTTP_409_CONFLICT
 
 from app.models import BookingStatusHistory, Payment
 from app.models.booking import Booking
@@ -17,12 +17,14 @@ from app.models.location import Location
 from app.models.maintenance import MaintenanceBlock
 from app.models.vehicle import Vehicle
 from app.schemas.booking import BookingCreate, BookingListParams
+from app.services.coupon_service import CouponService
 from app.services.refund_policy_service import RefundPolicyService
 
 
 class BookingService:
     def __init__(self, db: Session):
         self.db = db
+        self.coupon_service = CouponService(db)
 
     def calculate_duration(self, start_date: date, end_date: date) -> int:
         """
@@ -241,12 +243,17 @@ class BookingService:
             end_date=payload.end_date,
         )
 
-        # Coupon/discount handling can be added here later.
+        # Phase - 5 (coupons)
+        coupon = None
         discount_amount = Decimal("0.00")
+        if payload.coupon_code:
+            coupon = self.coupon_service.validate(
+                payload.coupon_code, customer_id, for_update=True
+            )
+            discount_amount = self.coupon_service.calculate_discount(coupon, base_price)
 
         total_price = self.calculate_total_price(
-            base_price=base_price,
-            discount_amount=discount_amount,
+            base_price=base_price, discount_amount=discount_amount
         )
 
         # Determine whether the booking needs approval before payment.
@@ -264,7 +271,7 @@ class BookingService:
             discount_amount=discount_amount,
             total_price=total_price,
             currency=vehicle.currency,
-            coupon_id=None,
+            coupon_id=coupon.id if coupon else None,
             deposit_hold_amount=Decimal(str(vehicle.deposit_amount or 0)),
             approval_deadline=approval_deadline,
             created_by=customer_id,
@@ -284,7 +291,16 @@ class BookingService:
         self.db.add(history)
 
         try:
+            if coupon:
+                self.db.flush()
+                self.coupon_service.reserve(coupon, booking)
             self.db.commit()
+        except IntegrityError:
+            self.db.rollback()
+            raise HTTPException(
+                status_code=HTTP_409_CONFLICT,
+                detail="Booking could not be created, try again",
+            )
         except Exception:
             self.db.rollback()
             raise
@@ -369,6 +385,8 @@ class BookingService:
         )
         self.db.add(history)
 
+        # Phase 5
+        self.coupon_service.release(booking)
         try:
             self.db.commit()
         except Exception:
@@ -410,6 +428,8 @@ class BookingService:
                 reason="Booking approval deadline expired",
             )
             self.db.add(history)
+
+            self.coupon_service.release(booking)
 
         try:
             self.db.commit()
@@ -730,6 +750,9 @@ class BookingService:
         )
         self.db.add(history)
 
+        if prev_status != BookingStatus.confirmed:
+            self.coupon_service.release(booking)
+
         if refund_amount > Decimal("0.00"):
             refund_payment = Payment(
                 booking_id=booking.id,
@@ -766,5 +789,3 @@ class BookingService:
 
         self.db.refresh(booking)
         return booking
-
-
