@@ -51,3 +51,6 @@ opencv-python
 pytesseract
 zxing-cpp
 alembic-postgresql-enum
+
+# Payment
+Stripe
