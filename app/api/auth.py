@@ -119,7 +119,10 @@ async def reset_password(
 async def logout(response: Response):
     response.delete_cookie(key="access_token")
     response.delete_cookie(key="refresh_token")
-    return SendRespose(success=True, message="User logout successfully", data=None)
+    return {
+        "success":True,
+        "message":"User logout successfully"
+    }
 
 
 @router.get("/get-me")
