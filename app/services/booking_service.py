@@ -8,7 +8,6 @@ from fastapi import HTTPException, status
 from sqlalchemy import func, select
 from sqlalchemy.exc import IntegrityError, SQLAlchemyError
 from sqlalchemy.orm import Session
-from starlette.status import HTTP_404_NOT_FOUND, HTTP_409_CONFLICT
 
 from app.models import BookingStatusHistory, Payment
 from app.models.booking import Booking
@@ -298,7 +297,7 @@ class BookingService:
         except IntegrityError:
             self.db.rollback()
             raise HTTPException(
-                status_code=HTTP_409_CONFLICT,
+                status_code=status.HTTP_409_CONFLICT,
                 detail="Booking could not be created, try again",
             )
         except Exception:
@@ -562,7 +561,7 @@ class BookingService:
 
         if not booking:
             raise HTTPException(
-                status_code=HTTP_404_NOT_FOUND, detail="Booking not found"
+                status_code=status.HTTP_404_NOT_FOUND, detail="Booking not found"
             )
 
         return booking
@@ -679,7 +678,7 @@ class BookingService:
         booking = self.db.execute(stmt).scalar_one_or_none()
         if not booking:
             raise HTTPException(
-                status_code=HTTP_404_NOT_FOUND, detail="Booking not found"
+                status_code=status.HTTP_404_NOT_FOUND, detail="Booking not found"
             )
         return booking
 

@@ -1,3 +1,5 @@
+import uuid
+
 from fastapi import HTTPException, status
 from redis.asyncio import Redis
 
@@ -11,7 +13,7 @@ class RedisService:
     """ FOR REFRESH TOKENS."""
     """ TODO: WE HAVE TO IMPROVE HERE. WE WILL SEE LATER"""
 
-    async def store_refresh_token(self, jti: str, user_id: int | str):
+    async def store_refresh_token(self, jti: str, user_id: uuid.UUID):
         await self.redis.set(
             f"refresh:{jti}",
             str(user_id),

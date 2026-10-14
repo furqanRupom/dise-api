@@ -5,9 +5,9 @@ As the booking domain grows, these endpoints can be separated into
 role-specific routers to keep the API easier to maintain.
 """
 
+import uuid
 from typing import Annotated
 
-from amqp.connection import uuid
 from fastapi import APIRouter, Depends, status
 from sqlalchemy.orm import Session
 

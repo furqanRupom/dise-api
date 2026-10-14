@@ -5,7 +5,6 @@ from fastapi import BackgroundTasks, HTTPException, Response, status
 from redis.asyncio import Redis
 from sqlalchemy import select
 from sqlalchemy.orm import Session
-from starlette.status import HTTP_401_UNAUTHORIZED
 
 from app.core.config import settings
 from app.core.mail_client import send_forgot_password_mail, send_otp_mail
@@ -146,7 +145,8 @@ class AuthService:
     ) -> bool:
         if not refresh_token:
             raise HTTPException(
-                status_code=HTTP_401_UNAUTHORIZED, detail="Refresh Token is missing!"
+                status_code=status.HTTP_401_UNAUTHORIZED,
+                detail="Refresh Token is missing!",
             )
 
         payload = jwt.decode(
@@ -161,7 +161,7 @@ class AuthService:
 
         if not session:
             raise HTTPException(
-                status_code=HTTP_401_UNAUTHORIZED,
+                status_code=status.HTTP_401_UNAUTHORIZED,
                 detail="Invalid or expired refresh token",
             )
 
