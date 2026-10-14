@@ -1,7 +1,16 @@
 import uuid
+from datetime import datetime
 from decimal import Decimal
 
-from sqlalchemy import CheckConstraint, Enum, ForeignKey, Numeric, String
+from sqlalchemy import (
+    CheckConstraint,
+    DateTime,
+    Enum,
+    ForeignKey,
+    Numeric,
+    String,
+    func,
+)
 from sqlalchemy.orm import Mapped, mapped_column, relationship
 
 from app.db.database import Base
@@ -35,3 +44,19 @@ class Payment(Base, TimestampMixin):
     booking: Mapped["Booking"] = relationship(back_populates="payments")
 
     __table_args__ = (CheckConstraint("amount >= 0", name="ck_payments_amount"),)
+
+
+class ProcessedWebhookEvent(Base):
+    """One row per Stripe event we have fully handled (dedupe on redelivery).
+
+    The row is inserted in the SAME transaction as the handler's changes, so a
+    handler failure rolls the row back and Stripe's retry reprocesses the event.
+    """
+
+    __tablename__ = "processed_webhook_events"
+
+    event_id: Mapped[str] = mapped_column(String(100), primary_key=True)
+    event_type: Mapped[str] = mapped_column(String(100), nullable=False)
+    processed_at: Mapped[datetime] = mapped_column(
+        DateTime(timezone=True), server_default=func.now(), nullable=False
+    )
