@@ -7,6 +7,7 @@ from sqlalchemy import (
     DateTime,
     Enum,
     ForeignKey,
+    Index,
     Numeric,
     String,
     func,
@@ -40,10 +41,23 @@ class Payment(Base, TimestampMixin):
     idempotency_key: Mapped[str] = mapped_column(
         String(100), unique=True, nullable=False
     )
+    # Refund id. The PI id belongs to the charge row, so refunds need their own.
+    # Also the durable "already sent to Stripe" guard against double refunds.
+    stripe_refund_id: Mapped[str | None] = mapped_column(String(100), unique=True)
+    failure_reason: Mapped[str | None] = mapped_column(String(256))
+    note: Mapped[str | None] = mapped_column(String(255))
 
+    # deposit holds only
+    authorized_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True))
+    authorization_expires_at: Mapped[datetime | None] = mapped_column(
+        DateTime(timezone=True)
+    )
     booking: Mapped["Booking"] = relationship(back_populates="payments")
 
-    __table_args__ = (CheckConstraint("amount >= 0", name="ck_payments_amount"),)
+    __table_args__ = (
+        CheckConstraint("amount >= 0", name="ck_payments_amount"),
+        Index("idx_payments_type_status", "type", "status"),
+    )
 
 
 class ProcessedWebhookEvent(Base):
