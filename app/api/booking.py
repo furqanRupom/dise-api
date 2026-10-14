@@ -10,7 +10,6 @@ from typing import Annotated
 from amqp.connection import uuid
 from fastapi import APIRouter, Depends, status
 from sqlalchemy.orm import Session
-from starlette.status import HTTP_200_OK
 
 from app.core.dependencies import require_admin_or_staff, require_user
 from app.db import get_db
@@ -111,7 +110,7 @@ async def create_booking(
 @router.get(
     "/my",
     response_model=BookingListResponse,
-    status_code=HTTP_200_OK,
+    status_code=status.HTTP_200_OK,
     summary="List my bookings",
     description=(
         "Return paginated bookings belonging to the currently "
@@ -148,7 +147,7 @@ async def get_my_bookings(
 @router.get(
     "/my/{booking_id}",
     response_model=BookingResponse,
-    status_code=HTTP_200_OK,
+    status_code=status.HTTP_200_OK,
     summary="my booking",
     description=("Return specific customer booking "),
 )
@@ -167,7 +166,7 @@ async def get_my_booking(
 @router.get(
     "/",
     response_model=BookingListResponse,
-    status_code=HTTP_200_OK,
+    status_code=status.HTTP_200_OK,
     summary="List all bookings",
     description=(
         "Return paginated bookings belonging to the currently "
@@ -203,7 +202,7 @@ async def get_bookings(
 @router.get(
     "/{booking_id}",
     response_model=BookingResponse,
-    status_code=HTTP_200_OK,
+    status_code=status.HTTP_200_OK,
     summary="Specific booking",
     description=("Return specific booking "),
 )
