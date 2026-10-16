@@ -8,8 +8,9 @@ Every Stripe call in the app goes through here so that:
 Requires stripe>=8 (exceptions are exposed as stripe.StripeError, etc.).
 """
 
-from datetime import datetime
+from datetime import datetime, timezone
 from decimal import Decimal
+from typing import Any
 
 import stripe
 
@@ -36,17 +37,19 @@ ZERO_DECIMAL = {
 
 
 def to_minor_units(amount: Decimal, currency: str) -> int:
-    """Decimal('12.34'), 'USD' -> 1234. Zero-decimal currencies are not x100."""
+    """Convert a decimal amount to the currency's smallest unit."""
     if currency.upper() in ZERO_DECIMAL:
         return int(amount)
+
     return int((amount * 100).quantize(Decimal("1")))
 
 
 class StripeService:
-    def __int__(self) -> None:
+    def __init__(self) -> None:
         stripe.api_key = settings.STRIPE_SECRET_KEY
 
     # ---- customers -------------------------------------------------------
+
     def create_customer(self, user):
         return stripe.Customer.create(
             email=user.email,
@@ -66,48 +69,80 @@ class StripeService:
         manual_capture: bool = False,
         save_card: bool = False,
     ):
-        params = dict(
-            amount=to_minor_units(payment.amount, payment.currency),
-            currency=payment.currency.lower(),
-            customer=customer_id,
-            automatic_payment_methods={"enabled": True},
-            capture_method="manual" if manual_capture else "automatic",
-            metadata={
+        params: dict[str, Any] = {
+            "amount": to_minor_units(payment.amount, payment.currency),
+            "currency": payment.currency.lower(),
+            "customer": customer_id,
+            "automatic_payment_methods": {"enabled": True},
+            "capture_method": "manual" if manual_capture else "automatic",
+            "metadata": {
                 "booking_id": str(booking.id),
                 "customer_id": str(booking.customer_id),
                 "payment_id": str(payment.id),
                 "type": payment.type.value,
             },
-            idempotency_key=payment.idempotency_key,
-        )
+            "idempotency_key": payment.idempotency_key,
+        }
+
         if save_card:
             params["setup_future_usage"] = "off_session"
+
         return stripe.PaymentIntent.create(**params)
 
     def retrieve_intent(self, pi_id: str):
         return stripe.PaymentIntent.retrieve(pi_id)
 
     def cancel_intent(self, pi_id: str, idempotency_key: str):
-        """Cancels an intent. On a manual-capture intent in requires_capture
-        this releases the card hold."""
-        return stripe.PaymentIntent.cancel(pi_id, idempotency_key=idempotency_key)
+        """Cancel an intent and release its authorization when applicable."""
+        return stripe.PaymentIntent.cancel(
+            pi_id,
+            idempotency_key=idempotency_key,
+        )
 
-    def capture_intent(self, pi_id: str, amount_minor: int, idempotency_key: str):
-        """Full or partial capture. Stripe releases the uncaptured remainder."""
+    def capture_intent(
+        self,
+        pi_id: str,
+        amount_minor: int,
+        idempotency_key: str,
+    ):
+        """Capture a payment in full or partially."""
         return stripe.PaymentIntent.capture(
-            pi_id, amount_to_capture=amount_minor, idempotency_key=idempotency_key
+            pi_id,
+            amount_to_capture=amount_minor,
+            idempotency_key=idempotency_key,
         )
 
     def get_capture_before(self, pi_id: str) -> datetime | None:
-        """When the card network will drop the authorization, if Stripe says."""
+        """Return the card authorization expiry if Stripe provides it."""
         try:
-            pi = stripe.PaymentIntent.retrieve(pi_id, expand=["latest_charge"])
-            ts = pi.latest_charge.payment_method_details.card.capture_before
-            return datetime.fromtimestamp(ts, tz=timezone.utc) if ts else None
+            payment_intent = stripe.PaymentIntent.retrieve(
+                pi_id,
+                expand=["latest_charge"],
+            )
+
+            latest_charge = payment_intent.latest_charge
+            if not isinstance(latest_charge, stripe.Charge):
+                return None
+
+            payment_method_details = latest_charge.payment_method_details
+            if payment_method_details is None:
+                return None
+
+            card = payment_method_details.card
+            if card is None:
+                return None
+
+            timestamp = card.capture_before
+            if timestamp is None:
+                return None
+
+            return datetime.fromtimestamp(timestamp, tz=timezone.utc)
+
         except (stripe.StripeError, AttributeError, KeyError, TypeError):
             return None
 
     # ---- refunds ---------------------------------------------------------
+
     def create_refund(self, pi_id: str, payment):
         return stripe.Refund.create(
             payment_intent=pi_id,
