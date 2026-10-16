@@ -62,5 +62,13 @@ class Settings(BaseSettings):
     CLOUDINARY_API_SECRET: str = "dsjaldk;js"
     CLOUDINARY_FOLDER: str = "uploads"
 
+    # Stripe
+
+    STRIPE_SECRET_KEY: str = ""
+    STRIPE_WEBHOOK_SECRET: str = ""
+    STRIPE_SAVE_CARDS: bool = True
+    DEPOSIT_HOLD_WINDOW_DAYS: int = 6
+    DEPOSIT_HOLD_FALLBACK_EXPIRY_DAYS: int = 7
+
 
 settings = Settings()
