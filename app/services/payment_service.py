@@ -11,6 +11,7 @@ Rules this module follows
 3. A declined card does not fail a charge row. The PaymentIntent goes back to
    requires_payment_method and can be retried, so we only record failure_reason.
 4. This module never imports FleetService (FleetService imports this one).
+5. TODO : we will add if there is something necessary for now we just leave it alone
 """
 
 import logging
