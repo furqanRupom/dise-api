@@ -1,3 +1,5 @@
+# app/core/celery.py
+
 from celery import Celery
 
 from app.core.config import settings
@@ -28,7 +30,12 @@ celery_app.conf.update(
         "expire_pending_approvals_every_minute": {
             "task": "bookings.expire_pending_approvals",
             "schedule": 60.0,
-        }
+        },
+        "process_pending_payments_every_minute": {
+            "task": "payments.process_pending",
+            "schedule": 60.0,
+            "options": {"expires": 55},
+        },
     },
 )
 
