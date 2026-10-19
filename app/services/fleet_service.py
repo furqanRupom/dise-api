@@ -28,6 +28,7 @@ from app.models.condition_reports import ConditionReportImage
 from app.models.enums import BookingStatus, ReportType, UserRole
 from app.schemas.condition_reports import ConditionReportCreate
 from app.services.booking_service import BookingService
+from app.services.payment_service import PaymentService
 
 # TODO : Will moved to settings (and also we need to update it booking service layer as well)
 BUSINESS_TZ = ZoneInfo("Asia/Dhaka")
@@ -41,6 +42,7 @@ class FleetService:
     def __init__(self, db: Session):
         self.db = db
         self.booking_service = BookingService(db)
+        self.payment_service = PaymentService(db)  # gateway is lazy: no Stripe here
 
     # HELPERS
     def _lock_vehicle(self, vehicle_id: uuid.UUID):
@@ -140,6 +142,8 @@ class FleetService:
                 status_code=status.HTTP_409_CONFLICT,
                 detail="Booking period has already ended",
             )
+        # Phase 6: no keys without an authorized (and unexpired) deposit hold.
+        self.payment_service.assert_deposit_ready(booking)
 
         # Lock the vehicle row. This also protects against handing the car
         # to a new renter while the previous one has not returned it yet
@@ -214,7 +218,7 @@ class FleetService:
         today = business_today()
 
         if today > booking.end_date:
-            # Late Fee is phase 6 : we just only recorded here
+            # Late fee: recorded only (could become a deposit_capture later)
             reason += " (late)"
 
         self._add_history(
