@@ -109,4 +109,6 @@ def require_roles(roles: list[UserRole]):
 require_admin = require_roles([UserRole.admin])
 require_staff = require_roles([UserRole.fleet_staff])
 require_user = require_roles([UserRole.customer])
+require_support = require_roles([UserRole.support])
 require_admin_or_staff = require_roles([UserRole.admin, UserRole.fleet_staff])
+require_admin_or_support = require_roles([UserRole.admin, UserRole.support])
