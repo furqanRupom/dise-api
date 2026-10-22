@@ -9,10 +9,12 @@ from app.api.booking import router as booking_router
 from app.api.coupon import router as coupon_router
 from app.api.fleet import router as fleet_router
 from app.api.location import router as location_router
+from app.api.payment import router as payment_router
 from app.api.refund_policy import router as refund_policy_router
 from app.api.user import router as user_router
 from app.api.vehicle import router as vehicle_router
 from app.api.vehicle_category import router as vehicle_category_router
+from app.api.webhooks import router as webhooks_router
 from app.core.config import settings
 
 logger = logging.getLogger(__name__)
@@ -74,6 +76,8 @@ app.include_router(vehicle_router)
 app.include_router(refund_policy_router)
 app.include_router(booking_router)
 app.include_router(fleet_router)
+app.include_router(payment_router)
+app.include_router(webhooks_router)
 
 
 @app.get(
