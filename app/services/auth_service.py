@@ -1,9 +1,10 @@
 import uuid
 
 import jwt
-from fastapi import BackgroundTasks, HTTPException, Response, status
+from fastapi import BackgroundTasks, HTTPException, status
 from redis.asyncio import Redis
 from sqlalchemy import select
+from sqlalchemy.exc import IntegrityError
 from sqlalchemy.orm import Session
 
 from app.core.config import settings
@@ -33,7 +34,23 @@ class AuthService:
         self.redis = redis
         self.redis_service = RedisService(redis)
 
-    def find_by_id(self, user_id: uuid.UUID):
+    # ------------------------------------------------------------------ #
+    # Helpers
+    # ------------------------------------------------------------------ #
+    @staticmethod
+    def _normalize_email(email: str) -> str:
+        return email.strip().lower()
+
+    def _get_user_by_email(self, email: str) -> User | None:
+        """Single place for the 'non-deleted user by email' query."""
+        return self.db.execute(
+            select(User).where(
+                User.email == self._normalize_email(email),
+                User.deleted_at.is_(None),
+            )
+        ).scalar_one_or_none()
+
+    def find_by_id(self, user_id: uuid.UUID) -> User:
         user = self.db.execute(
             select(User).where(User.id == user_id, User.deleted_at.is_(None))
         ).scalar_one_or_none()
@@ -44,10 +61,8 @@ class AuthService:
             )
         return user
 
-    def find_by_email(self, email: str):
-        user = self.db.execute(
-            select(User).where(User.email == email, User.deleted_at.is_(None))
-        ).scalar_one_or_none()
+    def find_by_email(self, email: str) -> User:
+        user = self._get_user_by_email(email)
         if not user:
             raise HTTPException(
                 status_code=status.HTTP_404_NOT_FOUND,
@@ -55,33 +70,86 @@ class AuthService:
             )
         return user
 
+    @staticmethod
+    def _decode_refresh_token(token: str) -> dict:
+        """Decode a refresh token, turning JWT errors into 401s instead of 500s."""
+        try:
+            return jwt.decode(
+                token,
+                settings.SECRET_REFRESH_TOKEN,
+                algorithms=[settings.ALGORITHMS],
+            )
+        except jwt.ExpiredSignatureError:
+            raise HTTPException(
+                status_code=status.HTTP_401_UNAUTHORIZED,
+                detail="Refresh token has expired",
+            )
+        except jwt.InvalidTokenError:
+            raise HTTPException(
+                status_code=status.HTTP_401_UNAUTHORIZED,
+                detail="Invalid refresh token",
+            )
+
+    async def _issue_tokens(self, token_data: TokenData) -> TokenPair:
+        """Create an access/refresh pair and register the refresh session in Redis."""
+        access_token = create_access_token(token_data)
+        refresh_token = create_refresh_token(token_data)
+
+        payload = self._decode_refresh_token(refresh_token)
+        await self.redis_service.store_refresh_token(payload["jti"], token_data.id)
+
+        return TokenPair(access_token=access_token, refresh_token=refresh_token)
+
+    def _get_active_user_or_401(self, user_id: uuid.UUID | str) -> User:
+        user = self.db.execute(
+            select(User).where(User.id == user_id, User.deleted_at.is_(None))
+        ).scalar_one_or_none()
+        if not user or not user.is_active:
+            raise HTTPException(
+                status_code=status.HTTP_401_UNAUTHORIZED,
+                detail="Invalid or expired refresh token",
+            )
+        return user
+
+    # ------------------------------------------------------------------ #
+    # Registration / verification
+    # ------------------------------------------------------------------ #
     async def register(
         self, register: Register, background_tasks: BackgroundTasks
     ) -> RegisterResponse:
-        is_exit = self.db.execute(
-            select(User).where(User.email == register.email, User.deleted_at.is_(None))
-        ).scalar_one_or_none()
-        if is_exit:
+        email = self._normalize_email(register.email)
+
+        if self._get_user_by_email(email):
             raise HTTPException(
                 status_code=status.HTTP_409_CONFLICT,
-                detail="User Already Exits with this Email",
+                detail="A user with this email already exists",
             )
 
-        passwordHash = hash_password(register.password)
-
-        new_user = User(name=register.name, email=register.email, password=passwordHash)
+        new_user = User(
+            name=register.name,
+            email=email,
+            password=hash_password(register.password),
+        )
 
         try:
             self.db.add(new_user)
             self.db.commit()
             self.db.refresh(new_user)
-        except:
+        except IntegrityError:
+            # Two concurrent requests passed the check above; the unique
+            # constraint on email caught the loser.
+            self.db.rollback()
+            raise HTTPException(
+                status_code=status.HTTP_409_CONFLICT,
+                detail="A user with this email already exists",
+            )
+        except Exception:
             self.db.rollback()
             raise
 
         otp = generate_otp()
-        await self.redis_service.store_otp(register.email, otp)
-        await send_otp_mail(register.email, otp, background_tasks)
+        await self.redis_service.store_otp(email, otp)
+        await send_otp_mail(email, otp, background_tasks)
 
         return RegisterResponse(
             id=new_user.id,
@@ -89,49 +157,23 @@ class AuthService:
             email=new_user.email,
         )
 
-    async def login(self, data: Login) -> TokenPair:
-        user = self.find_by_email(data.email)
-        verify_pass = verify_password(data.password, user.password)
-        if not verify_pass:
-            raise HTTPException(
-                status_code=status.HTTP_400_BAD_REQUEST,
-                detail="Password did not matched!",
-            )
-
-        if not user.is_verified:
-            raise HTTPException(
-                status_code=status.HTTP_403_FORBIDDEN,
-                detail="Please verify your email first!",
-            )
-
-        token_data = TokenData(id=user.id, role=user.role)
-
-        access_token = create_access_token(token_data)
-        refresh_token = create_refresh_token(token_data)
-
-        payload = jwt.decode(
-            refresh_token,
-            settings.SECRET_REFRESH_TOKEN,
-            algorithms=[settings.ALGORITHMS],
-        )
-        jti = payload["jti"]
-
-        # STORING REFRESH TOKEN IN REDIS
-        await self.redis_service.store_refresh_token(jti, user.id)
-        return TokenPair(access_token=access_token, refresh_token=refresh_token)
-
     async def verification_otp(
         self, email: str, background_tasks: BackgroundTasks
     ) -> bool:
-        _ = self.find_by_email(email)
+        email = self._normalize_email(email)
 
+        # Rate limit first so the response doesn't depend on whether the user exists.
         await self.redis_service.check_rate_limit(email)
-        otp = generate_otp()
-        await self.redis_service.store_otp(email, otp)
-        await send_otp_mail(email, otp, background_tasks)
+
+        if self._get_user_by_email(email):
+            otp = generate_otp()
+            await self.redis_service.store_otp(email, otp)
+            await send_otp_mail(email, otp, background_tasks)
         return True
 
     async def verify_email(self, email: str, otp: str) -> bool:
+        email = self._normalize_email(email)
+
         await self.redis_service.verify_otp(email, otp)
         user = self.find_by_email(email)
 
@@ -140,88 +182,116 @@ class AuthService:
         self.db.commit()
         return True
 
-    async def refresh_session(
-        self, refresh_token: str | None, response: Response
-    ) -> bool:
+    # ------------------------------------------------------------------ #
+    # Login / sessions
+    # ------------------------------------------------------------------ #
+    async def login(self, data: Login) -> TokenPair:
+        user = self._get_user_by_email(data.email)
+
+        # Same error for "no such user" and "wrong password".
+        if not user or not verify_password(data.password, user.password):
+            raise HTTPException(
+                status_code=status.HTTP_401_UNAUTHORIZED,
+                detail="Invalid email or password",
+            )
+
+        if not user.is_verified:
+            raise HTTPException(
+                status_code=status.HTTP_403_FORBIDDEN,
+                detail="Please verify your email first!",
+            )
+
+        return await self._issue_tokens(TokenData(id=user.id, role=user.role))
+
+    async def refresh_session(self, refresh_token: str | None) -> TokenPair:
         if not refresh_token:
             raise HTTPException(
                 status_code=status.HTTP_401_UNAUTHORIZED,
-                detail="Refresh Token is missing!",
+                detail="Refresh token is missing!",
             )
 
-        payload = jwt.decode(
-            refresh_token,
-            settings.SECRET_REFRESH_TOKEN,
-            algorithms=[settings.ALGORITHMS],
-        )
+        payload = self._decode_refresh_token(refresh_token)
 
-        # GET THE EXISTING SESSION FROM REDIS
-
-        session = await self.redis_service.get_refresh_token(payload["jti"])
-
+        # Atomically take the session: it must still exist (not revoked) and
+        # can only be used once, even under concurrent requests.
+        session = await self.redis_service.consume_refresh_token(payload["jti"])
         if not session:
             raise HTTPException(
                 status_code=status.HTTP_401_UNAUTHORIZED,
                 detail="Invalid or expired refresh token",
             )
 
-        # DELETE THE EXISTING SESSION
+        # Re-read the user so role changes / deletions / deactivation take
+        # effect instead of trusting claims baked into the old token.
+        user = self._get_active_user_or_401(payload["id"])
 
-        await self.redis_service.delete_refresh_token(payload["jti"])
+        return await self._issue_tokens(TokenData(id=user.id, role=user.role))
 
-        token_data = TokenData(id=payload["id"], role=payload["role"])
+    async def logout(self, refresh_token: str | None) -> bool:
+        """Revoke this refresh session in Redis."""
+        if not refresh_token:
+            return True
 
-        new_access_token = create_access_token(token_data)
-        new_refresh_token = create_refresh_token(token_data)
+        try:
+            # Expired tokens still identify a session worth deleting.
+            payload = jwt.decode(
+                refresh_token,
+                settings.SECRET_REFRESH_TOKEN,
+                algorithms=[settings.ALGORITHMS],
+                options={"verify_exp": False},
+            )
+        except jwt.InvalidTokenError:
+            return True  # Garbage token: nothing to revoke.
 
-        new_payload = jwt.decode(
-            new_refresh_token,
-            settings.SECRET_REFRESH_TOKEN,
-            algorithms=[settings.ALGORITHMS],
-        )
-        # STORE NEW SESSION FOR REFRESH TOKEN
-        await self.redis_service.store_refresh_token(
-            new_payload["jti"], new_payload["id"]
-        )
-
-        response.set_cookie(
-            key="access_token",
-            value=new_access_token,
-            httponly=True,
-            max_age=settings.ACCESS_TOKEN_EXPIRE_SECONDS,
-            samesite="lax",
-            secure=True,
-        )
-        response.set_cookie(
-            key="refresh_token",
-            value=new_refresh_token,
-            httponly=True,
-            max_age=settings.REFRESH_TOKEN_EXPIRE_SECONDS,
-            samesite="lax",
-            secure=True,
-        )
-
+        if jti := payload.get("jti"):
+            await self.redis_service.delete_refresh_token(jti)
         return True
 
+    # ------------------------------------------------------------------ #
+    # Password management
+    # ------------------------------------------------------------------ #
     async def forgot_password(
         self, email: str, background_tasks: BackgroundTasks
     ) -> bool:
-        _ = self.find_by_email(email)
+        email = self._normalize_email(email)
+        await self.redis_service.check_rate_limit(email, purpose="reset")
 
-        otp = generate_otp()
-        await self.redis_service.store_otp(email, otp)
-
-        await send_forgot_password_mail(email, otp, background_tasks)
-
+        # Always return True: don't reveal which emails are registered.
+        if self._get_user_by_email(email):
+            otp = generate_otp()
+            await self.redis_service.store_otp(email, otp, purpose="reset")
+            await send_forgot_password_mail(email, otp, background_tasks)
         return True
 
-    async def reset_password(self, payload: ResetPassword) -> bool:
-        user = self.find_by_email(payload.email)
+    async def reset_forgotten_password(
+        self, email: str, otp: str, new_password: str
+    ) -> bool:
+        """Second half of forgot-password: verify the OTP, set a new password.
 
+        Reset OTPs live in their own Redis namespace, so an email-verification
+        OTP can't be replayed here. Needs a route (not wired up yet).
+        """
+        email = self._normalize_email(email)
+        await self.redis_service.verify_otp(email, otp, purpose="reset")
+
+        user = self.find_by_email(email)
+        user.password = hash_password(new_password)
+        self.db.commit()
+
+        # Whoever had the old password shouldn't stay logged in.
+        await self.redis_service.revoke_all_user_sessions(user.id)
+        return True
+
+    async def reset_password(self, user: User, payload: ResetPassword) -> bool:
+        """Change password for the logged-in user (needs the current password)."""
         if not verify_password(payload.current_password, user.password):
-            raise HTTPException(status_code=400, detail="Invalid current password")
+            raise HTTPException(
+                status_code=status.HTTP_400_BAD_REQUEST,
+                detail="Invalid current password",
+            )
 
         user.password = hash_password(payload.new_password)
         self.db.commit()
 
+        await self.redis_service.revoke_all_user_sessions(user.id)
         return True
