@@ -1,150 +1,124 @@
 <p align="center">
-  <a href="./app/assets/logo.png"><img src="./app/assets/logo.png" alt="dise+ logo" width="120"></a>
+  <a href="./app/assets/logo.png"><img src="./app/assets/logo.png" alt="dise+ logo" width="110"></a>
 </p>
 
-<h1 align="center">dise+ API</h1>
+<h1 align="center">dise+ api</h1>
 
 <p align="center">
-  <strong>FastAPI backend for a platform-owned car rental fleet service.</strong>
+  <strong>fastapi backend for a platform-owned car rental fleet service.</strong>
 </p>
 
 <p align="center">
-  <a href="https://www.python.org/"><img src="https://img.shields.io/badge/Python-3.12%2B-3776AB?style=flat&logo=python&logoColor=white" alt="Python"></a>
-  <a href="https://fastapi.tiangolo.com/"><img src="https://img.shields.io/badge/FastAPI-0.140%2B-009688?style=flat&logo=fastapi&logoColor=white" alt="FastAPI"></a>
-  <a href="https://www.postgresql.org/"><img src="https://img.shields.io/badge/PostgreSQL-16-4169E1?style=flat&logo=postgresql&logoColor=white" alt="PostgreSQL"></a>
-  <a href="https://redis.io/"><img src="https://img.shields.io/badge/Redis-7-DC382D?style=flat&logo=redis&logoColor=white" alt="Redis"></a>
-  <a href="https://docs.celeryq.dev/"><img src="https://img.shields.io/badge/Celery-5.4%2B-37814A?style=flat&logo=celery&logoColor=white" alt="Celery"></a>
-  <a href="LICENSE"><img src="https://img.shields.io/badge/License-MIT-blue.svg?style=flat" alt="License"></a>
+  <a href="https://www.python.org/"><img src="https://img.shields.io/badge/python-3.12%2b-3776ab?style=flat&logo=python&logocolor=white" alt="python"></a>
+  <a href="https://fastapi.tiangolo.com/"><img src="https://img.shields.io/badge/fastapi-0.140%2b-009688?style=flat&logo=fastapi&logocolor=white" alt="fastapi"></a>
+  <a href="https://www.postgresql.org/"><img src="https://img.shields.io/badge/postgresql-16-4169e1?style=flat&logo=postgresql&logocolor=white" alt="postgresql"></a>
+  <a href="https://redis.io/"><img src="https://img.shields.io/badge/redis-7-dc382d?style=flat&logo=redis&logocolor=white" alt="redis"></a>
+  <a href="https://docs.celeryq.dev/"><img src="https://img.shields.io/badge/celery-5.4%2b-37814a?style=flat&logo=celery&logocolor=white" alt="celery"></a>
+  <a href="license"><img src="https://img.shields.io/badge/license-mit-blue.svg?style=flat" alt="license"></a>
 </p>
 
 ---
 
-## Features
+## overview
 
-- **Authentication & RBAC**: Argon2 hashing, HTTP-only cookie JWTs, Google OAuth2, and role-based access (`customer`, `fleet_staff`, `support`, `admin`).
-- **Fleet & Branch Management**: Multi-location inventory, vehicle categorization, specs, and Cloudinary image galleries.
-- **Double-Booking Guard**: Database-level concurrency protection using PostgreSQL's `btree_gist` exclusion constraints.
-- **Driver License Verification**: Customer document submission with admin review workflow and automated email notifications.
-- **Pricing & Cancellations**: Discount coupons and tiered cancellation refund calculations.
-- **Async Workers**: Celery + Redis for asynchronous background tasks (emails, OTPs).
+**dise+** is a restful backend api designed for a platform-owned car rental fleet service. unlike peer-to-peer marketplaces, the platform directly owns and manages its vehicle inventory across physical branch locations.
+
+it handles the entire rental lifecycle: driver's license verification, multi-branch vehicle availability, concurrency-safe reservations, stripe payment and deposit holds, and automated celery background operations.
 
 ---
 
-## Tech Stack
+## features
 
-- **Framework**: FastAPI (Python 3.12+)
-- **Database & ORM**: PostgreSQL 16, SQLAlchemy 2.0, Alembic
-- **Cache & Queue**: Redis 7, Celery
-- **Storage & Mail**: Cloudinary, FastAPI-Mail / aiosmtplib
+- **auth & rbac**: argon2 hashing, http-only cookie jwts, google oauth2, and role permissions (`customer`, `fleet_staff`, `support`, `admin`).
+- **fleet & locations**: multi-branch vehicle catalog, specs, real-time availability, and cloudinary media storage.
+- **double-booking guard**: postgresql `btree_gist` exclusion constraints to prevent overlapping reservations at the db level.
+- **driver verification**: driving license upload, document ocr/verification pipeline, and admin approval workflows.
+- **payments & coupons**: stripe checkout, deposit holds, automated cancellation refund policies, and promo codes.
+- **background tasks**: celery + redis for scheduled task execution (reservation expiration, payment checks) and emails.
 
 ---
 
-## Quick Start
+## tech stack
 
-### 1. Clone & Setup Environment
+| category          | technologies                                           |
+| :---------------- | :----------------------------------------------------- |
+| **core**          | python 3.12+, fastapi, pydantic v2                     |
+| **database**      | postgresql 16, sqlalchemy 2.0, alembic                 |
+| **queue & cache** | redis 7, celery + celery beat                          |
+| **integrations**  | stripe (payments), cloudinary (media), mailtrap / smtp |
+
+---
+
+## getting started
+
+### 1. environment setup
 
 ```bash
-git clone https://github.com/furqanRupom/dise-api.git
+# clone and enter repo
+git clone https://github.com/furqanrupom/dise-api.git
 cd dise-api
 
+# virtual environment & dependencies
 python3 -m venv .venv
 source .venv/bin/activate
 pip install -r requirements.txt
 
+# copy environment file and configure secrets
 cp .env.example .env
 ```
 
-### 2. Start Services (PostgreSQL & Redis)
+### 2. start services
 
 ```bash
+# start postgresql & redis
 docker compose up -d
 
-# Enable btree_gist extension (required for booking constraints)
-docker compose exec postgres psql -U diseuser -d disedb -c "CREATE EXTENSION IF NOT EXISTS btree_gist;"
+# enable btree_gist extension (required for booking constraints)
+docker compose exec postgres psql -u diseuser -d disedb -c "create extension if not exists btree_gist;"
 ```
 
-### 3. Run Migrations & Seed Data
+### 3. migrations & seed data
 
 ```bash
 alembic upgrade head
 python scripts/seed_data.py
 ```
 
-### 4. Run Application
+### 4. run the application
 
 ```bash
-# Terminal 1: API Server
+# terminal 1: api server (http://127.0.0.1:8000)
 fastapi dev app/main.py
-# API runs at http://127.0.0.1:8000 (Swagger docs: http://127.0.0.1:8000/docs)
 
-# Terminal 2: Celery Worker
-celery -A app.core.celery.celery_app worker --loglevel=info
+# terminal 2: celery worker & beat
+celery -a app.core.celery.celery_app worker --beat --loglevel=info
 ```
 
 ---
 
-## Alembic Commands
+## seed accounts
 
-```bash
-# Generate a new migration after model changes
-alembic revision --autogenerate -m "describe your change"
+seeded via `scripts/seed_data.py` (default password: **`password123!`**):
 
-# Apply all pending migrations
-alembic upgrade head
-
-# Apply migrations up to a specific revision
-alembic upgrade <revision_id>
-
-# Roll back the last migration
-alembic downgrade -1
-
-# Roll back to a specific revision
-alembic downgrade <revision_id>
-
-# Roll back all migrations
-alembic downgrade base
-
-# Show current migration version applied to the database
-alembic current
-
-# Show full migration history
-alembic history --verbose
-
-# Show pending migrations (not yet applied)
-alembic history --indicate-current
-
-# Create a new empty migration (manual edits)
-alembic revision -m "describe your change"
-
-# Show SQL that would be run without executing it
-alembic upgrade head --sql
-```
+| role                    | email                   |
+| :---------------------- | :---------------------- |
+| **admin**               | `admin@example.com`     |
+| **support**             | `support@example.com`   |
+| **fleet staff**         | `fleet@example.com`     |
+| **customer (verified)** | `customer1@example.com` |
+| **customer (pending)**  | `customer2@example.com` |
 
 ---
 
-## Test Accounts
+## api documentation
 
-When populated via `seed_data.py`, use password **`Password123!`**:
+when the api server is running, interactive docs are available at:
 
-| Role                            | Email                   |
-| :------------------------------ | :---------------------- |
-| **Admin**                       | `admin@example.com`     |
-| **Support**                     | `support@example.com`   |
-| **Fleet Staff**                 | `fleet@example.com`     |
-| **Customer (Approved License)** | `customer1@example.com` |
-| **Customer (Pending License)**  | `customer2@example.com` |
+- **swagger ui**: [http://127.0.0.1:8000/docs](http://127.0.0.1:8000/docs)
+- **redoc**: [http://127.0.0.1:8000/redoc](http://127.0.0.1:8000/redoc)
 
 ---
 
-## API Documentation
+## license
 
-Interactive API documentation is automatically generated and accessible when the server is running:
-
-- **Swagger UI**: [http://127.0.0.1:8000/docs](http://127.0.0.1:8000/docs)
-- **ReDoc**: [http://127.0.0.1:8000/redoc](http://127.0.0.1:8000/redoc)
-
----
-
-## License
-
-This project is licensed under the [MIT License](LICENSE).
+distributed under the [mit license](license).
