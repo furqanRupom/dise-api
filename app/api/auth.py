@@ -24,6 +24,7 @@ from app.schemas.auth import (
     RegisterResponse,
     ResetPassword,
     TokenPair,
+    UserResponse,
 )
 from app.services.auth_service import AuthService
 
@@ -115,6 +116,6 @@ async def logout(
     return True
 
 
-@router.get("/get-me")
+@router.get("/get-me", response_model=UserResponse)
 async def get_me(user: CurrentUser):
     return user

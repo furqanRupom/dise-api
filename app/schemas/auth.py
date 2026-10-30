@@ -1,6 +1,8 @@
 import uuid
 
-from pydantic import BaseModel, EmailStr
+from pydantic import BaseModel, ConfigDict, EmailStr
+
+from app.models.enums import UserRole
 
 
 class UserBase(BaseModel):
@@ -40,3 +42,19 @@ class ResetPassword(BaseModel):
     email: EmailStr
     current_password: str
     new_password: str
+
+
+class UserResponse(BaseModel):
+    model_config = ConfigDict(from_attributes=True)
+
+    id: uuid.UUID
+    name: str
+    email: EmailStr
+    avatar_url: str
+    date_of_birth: str
+    license_number: str
+    license_document_url: str
+    license_status: str
+    role: UserRole
+    is_verified: bool
+    is_active: bool
