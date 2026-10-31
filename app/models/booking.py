@@ -76,9 +76,6 @@ class Booking(Base, TimestampMixin, SoftDeleteMixin):
     checked_out_by: Mapped[uuid.UUID | None] = mapped_column(
         ForeignKey("users.id", ondelete="RESTRICT")
     )
-    # lazy="selectin": these two are needed on almost every booking read
-    # (list view, detail view, receipts...) so we eager-load them by
-    # default in exactly 2 extra queries total instead of 1-per-row (N+1).
     customer: Mapped[User] = relationship(
         foreign_keys=[customer_id], back_populates="bookings", lazy="selectin"
     )
@@ -87,9 +84,7 @@ class Booking(Base, TimestampMixin, SoftDeleteMixin):
     status_history: Mapped[list["BookingStatusHistory"]] = relationship(
         back_populates="booking", cascade="all, delete-orphan"
     )
-    # Not eager-loaded by default (not needed on every read) — use
-    # selectinload(Booking.payments) / .review / .condition_reports at the
-    # query site when you actually need them, instead of a fresh query per row.
+
     payments: Mapped[list["Payment"]] = relationship(
         back_populates="booking", cascade="all, delete-orphan"
     )
@@ -112,15 +107,6 @@ class Booking(Base, TimestampMixin, SoftDeleteMixin):
             "deposit_hold_amount >= 0", name="ck_bookings_deposit_hold_amount"
         ),
         Index("idx_bookings_vehicle_dates", "vehicle_id", "start_date", "end_date"),
-        # DB-level double-booking guard - requires the btree_gist extension:
-        #   CREATE EXTENSION IF NOT EXISTS btree_gist;
-        # `deleted_at IS NULL` added: without it, a soft-deleted confirmed/
-        # active booking would permanently block that vehicle/date range.
-        #
-        # Both the daterange(...) expression and the where clause must be
-        # wrapped in text() - a bare string is interpreted by SQLAlchemy as
-        # a *column name* to look up on the table, not a raw SQL expression,
-        # which is what caused the ConstraintColumnNotFoundError.
         ExcludeConstraint(
             ("vehicle_id", "="),
             (text("daterange(start_date, end_date, '[)')"), "&&"),

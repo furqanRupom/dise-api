@@ -36,19 +36,45 @@ async def lifespan(app: FastAPI):
     logger.info("Shutting down Dise API...")
 
 
+tags_metadata = [
+    {"name": "Health", "description": "Check that the API is running."},
+    {"name": "Auth", "description": "Register, login, logout and session handling."},
+    {"name": "Users", "description": "User profiles and account management."},
+    {"name": "Locations", "description": "Pickup and drop-off locations."},
+    {"name": "Coupons", "description": "Create, validate and apply discount coupons."},
+    {
+        "name": "Vehicle Categories",
+        "description": "Vehicle types such as sedan, SUV and van.",
+    },
+    {"name": "Vehicles", "description": "Browse and manage the vehicle catalog."},
+    {"name": "Refund Policies", "description": "Cancellation and refund rules."},
+    {"name": "Bookings", "description": "Create, view, modify and cancel bookings."},
+    {"name": "Fleet", "description": "Admin tools for managing the fleet."},
+    {"name": "Payments", "description": "Payments and refunds for bookings."},
+]
+
+
 app = FastAPI(
     title="Dise API",
     description=(
-        "Backend API for **Dise**, a car rental platform — vehicle catalog, "
-        "bookings, payments, and admin/fleet management.\n\n"
-        "Most endpoints require a cookie JWT. Login via `POST /auth/login`, "
-        "then click **Authorize** above."
+        "Backend REST API for **Dise**, a car rental platform. It covers the "
+        "vehicle catalog, bookings, payments, coupons, and admin/fleet management.\n\n"
+        "## Authentication\n"
+        "Most endpoints require a login. Call `POST /auth/login` first. The JWT is "
+        "stored in a cookie and sent automatically with later requests.\n\n"
+        "## Roles\n"
+        "- **Customer**: browse vehicles, book, pay\n"
+        "- **Admin**: manage vehicles, fleet, coupons, refund policies\n\n"
+        "## Responses\n"
+        "Success and error responses follow a common format with `success`, "
+        "`statusCode` and `message` fields."
     ),
     version="1.0.0",
     contact={
         "name": "Dise Engineering Team",
         "email": "engineering@dise.app",
     },
+    openapi_tags=tags_metadata,
     docs_url="/docs",
     redoc_url="/redoc",
     openapi_url="/openapi.json",
