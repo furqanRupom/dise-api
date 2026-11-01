@@ -1,4 +1,22 @@
+x-app: &app
+  build: .
+  env_file: .env
+  environment:
+    DATABASE_URL: postgresql://diseuser:disepassword@postgres:5432/disedb
+    REDIS_HOST: redis
+    REDIS_PORT: "6379"
+    REDIS_DB: "0"
+    REDIS_URL: redis://redis:6379/0
+  depends_on:
+    postgres:
+      condition: service_healthy
+    redis:
+      condition: service_healthy
+  restart: unless-stopped
+  profiles: ["app"]
+
 services:
+  # ---------- Infrastructure (starts by default) ----------
   postgres:
     image: postgres:16
     container_name: dise_db
@@ -11,6 +29,12 @@ services:
       - "5432:5432"
     volumes:
       - postgres_data:/var/lib/postgresql/data
+      - ./scripts/sql/btree_gist_setup.sql:/docker-entrypoint-initdb.d/01-btree_gist.sql:ro
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U diseuser -d disedb"]
+      interval: 5s
+      timeout: 3s
+      retries: 10
 
   redis:
     image: redis:7-alpine
@@ -20,6 +44,32 @@ services:
       - "6379:6379"
     volumes:
       - redis_data:/data
+    healthcheck:
+      test: ["CMD", "redis-cli", "ping"]
+      interval: 5s
+      timeout: 3s
+      retries: 10
+
+  # ---------- Application (only with --profile app) ----------
+  api:
+    <<: *app
+    container_name: dise_api
+    command: >
+      sh -c "alembic upgrade head &&
+             uvicorn app.main:app --host 0.0.0.0 --port 8000"
+    ports:
+      - "8000:8000"
+
+  worker:
+    <<: *app
+    container_name: dise_worker
+    command: celery -A app.core.celery worker --loglevel=info
+
+  beat:
+    <<: *app
+    container_name: dise_beat
+    command: celery -A app.core.celery beat --loglevel=info -s /tmp/celerybeat-schedule
+
 volumes:
   postgres_data:
   redis_data:
