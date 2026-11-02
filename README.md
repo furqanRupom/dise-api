@@ -14,7 +14,14 @@
   <a href="https://www.postgresql.org/"><img src="https://img.shields.io/badge/postgresql-16-4169e1?style=flat&logo=postgresql&logocolor=white" alt="postgresql"></a>
   <a href="https://redis.io/"><img src="https://img.shields.io/badge/redis-7-dc382d?style=flat&logo=redis&logocolor=white" alt="redis"></a>
   <a href="https://docs.celeryq.dev/"><img src="https://img.shields.io/badge/celery-5.4%2b-37814a?style=flat&logo=celery&logocolor=white" alt="celery"></a>
-  <a href="license"><img src="https://img.shields.io/badge/license-mit-blue.svg?style=flat" alt="license"></a>
+  <a href="LICENSE"><img src="https://img.shields.io/badge/license-mit-blue.svg?style=flat" alt="license"></a>
+</p>
+
+<p align="center">
+  <a href="#overview">overview</a> ·
+  <a href="#features">features</a> ·
+  <a href="#getting-started">getting started</a> ·
+  <a href="#api-documentation">api docs</a>
 </p>
 
 ---
@@ -29,12 +36,11 @@ it handles the entire rental lifecycle: driver's license verification, multi-bra
 
 ## features
 
-- **auth & rbac**: argon2 hashing, http-only cookie jwts, google oauth2, and role permissions (`customer`, `fleet_staff`, `support`, `admin`).
 - **fleet & locations**: multi-branch vehicle catalog, specs, real-time availability, and cloudinary media storage.
-- **double-booking guard**: postgresql `btree_gist` exclusion constraints to prevent overlapping reservations at the db level.
-- **driver verification**: driving license upload, document ocr/verification pipeline, and admin approval workflows.
+- **double-booking guard**: postgresql `btree_gist` exclusion constraints prevent overlapping reservations at the db level.
+- **driver verification**: driving license upload, document ocr/verification pipeline, and staff approval workflows.
 - **payments & coupons**: stripe checkout, deposit holds, automated cancellation refund policies, and promo codes.
-- **background tasks**: celery + redis for scheduled task execution (reservation expiration, payment checks) and emails.
+- **background tasks**: celery + redis for scheduled tasks (reservation expiration, payment checks) and emails.
 
 ---
 
@@ -50,6 +56,8 @@ it handles the entire rental lifecycle: driver's license verification, multi-bra
 ---
 
 ## getting started
+
+**prerequisites:** python 3.12+ and docker with docker compose.
 
 ### 1. environment setup
 
@@ -74,7 +82,7 @@ cp .env.example .env
 docker compose up -d
 
 # enable btree_gist extension (required for booking constraints)
-docker compose exec postgres psql -u diseuser -d disedb -c "create extension if not exists btree_gist;"
+docker compose exec postgres psql -U diseuser -d disedb -c "create extension if not exists btree_gist;"
 ```
 
 ### 3. migrations & seed data
@@ -91,22 +99,8 @@ python scripts/seed_data.py
 fastapi dev app/main.py
 
 # terminal 2: celery worker & beat
-celery -a app.core.celery.celery_app worker --beat --loglevel=info
+celery -A app.core.celery.celery_app worker --beat --loglevel=info
 ```
-
----
-
-## seed accounts
-
-seeded via `scripts/seed_data.py` (default password: **`password123!`**):
-
-| role                    | email                   |
-| :---------------------- | :---------------------- |
-| **admin**               | `admin@example.com`     |
-| **support**             | `support@example.com`   |
-| **fleet staff**         | `fleet@example.com`     |
-| **customer (verified)** | `customer1@example.com` |
-| **customer (pending)**  | `customer2@example.com` |
 
 ---
 
@@ -121,4 +115,4 @@ when the api server is running, interactive docs are available at:
 
 ## license
 
-distributed under the [mit license](license).
+distributed under the [mit license](LICENSE).
