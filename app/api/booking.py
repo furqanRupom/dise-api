@@ -26,7 +26,7 @@ from app.services.booking_service import BookingService
 from app.services.refund_policy_service import RefundPolicyService
 
 router = APIRouter(
-    prefix="/v1/booking",
+    prefix="/booking",
     tags=["booking"],
 )
 

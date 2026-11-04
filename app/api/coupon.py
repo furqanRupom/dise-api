@@ -16,7 +16,7 @@ from app.schemas.coupon import (
 from app.services.coupon_service import CouponService
 
 router = APIRouter(
-    prefix="/v1/coupon",
+    prefix="/coupon",
     tags=["coupon"],
 )
 
@@ -24,7 +24,7 @@ router = APIRouter(
 @router.get("/")
 async def get_coupons(
     db: Annotated[Session, Depends(get_db)],
-    current_user: Annotated[User, Depends(require_admin)],
+    current_user: Annotated[User, Depends(get_current_active_user)],
 ):
     coupon = CouponService(db)
     return coupon.get_coupons()

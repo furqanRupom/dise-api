@@ -18,7 +18,7 @@ from app.schemas.user import (
 from app.services.user_service import UserService
 
 router = APIRouter(
-    prefix="/v1/user",
+    prefix="/user",
     tags=["user"],
 )
 

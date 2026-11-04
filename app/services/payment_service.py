@@ -21,7 +21,7 @@ from decimal import Decimal
 
 import stripe
 from fastapi import HTTPException, status
-from sqlalchemy import func, select
+from sqlalchemy import func, or_, select
 from sqlalchemy.exc import IntegrityError
 from sqlalchemy.orm import Session
 
@@ -31,7 +31,8 @@ from app.models.booking import Booking
 from app.models.enums import BookingStatus, PaymentStatus, PaymentType, UserRole
 from app.models.payments import ProcessedWebhookEvent
 from app.services.booking_service import BookingService
-from app.services.stripe_service import StripeService
+from app.services.stripe_service import StripeService, to_minor_units
+from app.utils.common import business_today
 
 logger = logging.getLogger(__name__)
 

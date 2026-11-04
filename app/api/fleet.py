@@ -12,7 +12,7 @@ from app.schemas.booking import BookingResponse
 from app.schemas.condition_reports import ConditionReportCreate, ConditionReportRead
 from app.services.fleet_service import FleetService
 
-router = APIRouter(prefix="/v1/booking", tags=["fleet"])
+router = APIRouter(prefix="/booking", tags=["fleet"])
 
 
 @router.post("/{booking_id}/check-out", response_model=BookingResponse)

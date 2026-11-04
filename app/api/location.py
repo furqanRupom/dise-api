@@ -4,7 +4,7 @@ from typing import Annotated
 from fastapi import APIRouter, Depends
 from sqlalchemy.orm import Session
 
-from app.core.dependencies import require_admin
+from app.core.dependencies import get_current_active_user, require_admin
 from app.db import get_db
 from app.models import User
 from app.schemas.location import LocationCreate, LocationResponse, LocationUpdate
@@ -40,7 +40,7 @@ async def update_location(
 @router.get("/", response_model=list[LocationResponse])
 async def get_location(
     db: Annotated[Session, Depends(get_db)],
-    current_user: Annotated[User, Depends(require_admin)],
+    current_user: Annotated[User, Depends(get_current_active_user)],
 ):
     location = LocationService(db)
     return location.get_locations()

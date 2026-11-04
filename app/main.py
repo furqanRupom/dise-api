@@ -18,6 +18,7 @@ from app.api.webhooks import router as webhooks_router
 from app.core.config import settings
 
 logger = logging.getLogger(__name__)
+API_V1_PREFIX = "/api/v1"
 
 
 @asynccontextmanager
@@ -93,17 +94,17 @@ app.add_middleware(
 )
 
 # Register routers
-app.include_router(auth_router)
-app.include_router(user_router)
-app.include_router(location_router)
-app.include_router(coupon_router)
-app.include_router(vehicle_category_router)
-app.include_router(vehicle_router)
-app.include_router(refund_policy_router)
-app.include_router(booking_router)
-app.include_router(fleet_router)
-app.include_router(payment_router)
-app.include_router(webhooks_router)
+app.include_router(auth_router, prefix=API_V1_PREFIX)
+app.include_router(user_router, prefix=API_V1_PREFIX)
+app.include_router(location_router, prefix=API_V1_PREFIX)
+app.include_router(coupon_router, prefix=API_V1_PREFIX)
+app.include_router(vehicle_category_router, prefix=API_V1_PREFIX)
+app.include_router(vehicle_router, prefix=API_V1_PREFIX)
+app.include_router(refund_policy_router, prefix=API_V1_PREFIX)
+app.include_router(booking_router, prefix=API_V1_PREFIX)
+app.include_router(fleet_router, prefix=API_V1_PREFIX)
+app.include_router(payment_router, prefix=API_V1_PREFIX)
+app.include_router(webhooks_router, prefix=API_V1_PREFIX)
 
 
 @app.get(

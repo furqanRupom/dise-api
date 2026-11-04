@@ -28,7 +28,7 @@ from app.schemas.payment import (
 )
 from app.services.payment_service import PaymentService
 
-router = APIRouter(tags=["payments"])
+router = APIRouter(tags=["/payments"])
 
 
 # ---- customer ------------------------------------------------------------ #
